@@ -6,13 +6,13 @@ Server for Anota, an application for creating automatic lists.
 2. Install the [npm](https://www.npmjs.com)
 
 ### Installing Firebase
-####To install from scratch:
+#### To install from scratch:
 1. `npm install firebase-functions@latest firebase-admin@latest --save`
 2. `npm install -g firebase-tools`
-####To install from this git project:
+#### To install from this git project:
 1. Go to the `project folder/functions`
 2. Type: `npm install`
-####Configuring project:
+#### Configuring project:
 1. On terminal type: `firebase login`
 2. Follow the steps to login on firebase (with your firenase account)
 3. Go to the project folder.
