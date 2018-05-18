@@ -54,7 +54,7 @@ exports.addList = functions.https.onRequest((req, res) => {
             // console.log(metadata);
 
             // Push the new message into the Realtime Database using the Firebase Admin SDK.
-            return admin.database().ref('/users/' + uid + "/lists").push(metadata).then((snapshot) => {
+            return admin.database().ref('/users/' + uid + "/lists/" + metadata.fantasyName).set(metadata).then(() => {
                 // Redirect with 303 SEE OTHER to the URL of the pushed object in the Firebase console.
                 // console.log(snapshot.ref.toString());
                 return res.status(200).send("OK");
