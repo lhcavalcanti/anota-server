@@ -1,5 +1,5 @@
 # Created by https://www.gitignore.io/api/node,firebase
-
+.DS_Store
 ### Firebase ###
 .idea
 **/node_modules/*
