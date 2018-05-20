@@ -13,6 +13,14 @@ admin.initializeApp();
 const request = require('request');
 const cheerio = require('cheerio');
 
+exports.getBestMarkets = functions.https.onRequest((req, res) => {
+  const uid = req.query.uid;
+
+  return admin.database().ref('/users/' + uid).once('value').then(function(snapshot) {
+    return res.status(200).send(snapshot.val().bestMarkets);
+  });
+});
+
 exports.addList = functions.https.onRequest((req, res) => {
     // Grab the text parameter.
     const uid = req.query.uid;
