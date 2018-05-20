@@ -89,6 +89,33 @@ exports.addList = functions.https.onRequest((req, res) => {
 
 //  
 
+exports.updateBestMarkets = functions.database.ref('/users/{pushId}/lists/{market}')
+    .onCreate((snapshot, context) => {
+
+    [list, price] = getList(snapshot);
+    console.log("The User: ",context.params.pushId, 
+                " in the Market: ", context.params.market, 
+                " Bought: ", list,
+                " For: R$", price);
+
+    return true;
+    });
+
+let getList = (snapshot) =>{
+    var prod = snapshot.child("prod").val();
+    var list = []
+    var price = 0.0
+    prod.forEach( product =>{
+        
+        list.push(product.name);
+        itemPrice = parseFloat(product.priceUnit)*parseFloat(product.qtd)
+        price += itemPrice
+
+    } );
+
+    return [list,price]
+
+};
 
 
 
