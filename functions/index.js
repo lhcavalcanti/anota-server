@@ -21,15 +21,15 @@ exports.getBestMarkets = functions.https.onRequest((req, res) => {
   });
 });
 
-exports.testTrigger = functions.database.ref('/users/')
-    .onWrite((snapshot, context) => {
-      // Grab the current value of what was written to the Realtime Database.
-      const original = snapshot.val();
-      console.log('Trigger');
-      // You must return a Promise when performing asynchronous tasks inside a Functions such as
-      // writing to the Firebase Realtime Database.
-      // Setting an "uppercase" sibling in the Realtime Database returns a Promise.
-      return snapshot.ref('name').set("trigged");
+exports.testTrigger = functions.database.ref('/users/{uid}')
+    .onUpdate(event => {
+      console.log("trigged")
+      // const data = event.data.val();
+      const newData = {
+        msg: 'done'
+      };
+
+      return event.data.ref.parent.child('copiedData').set(newData);
     });
 
 exports.addList = functions.https.onRequest((req, res) => {
