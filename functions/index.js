@@ -21,6 +21,17 @@ exports.getBestMarkets = functions.https.onRequest((req, res) => {
   });
 });
 
+exports.testTrigger = functions.database.ref('/users/')
+    .onWrite((snapshot, context) => {
+      // Grab the current value of what was written to the Realtime Database.
+      const original = snapshot.val();
+      console.log('Trigger');
+      // You must return a Promise when performing asynchronous tasks inside a Functions such as
+      // writing to the Firebase Realtime Database.
+      // Setting an "uppercase" sibling in the Realtime Database returns a Promise.
+      return snapshot.ref('name').set("trigged");
+    });
+
 exports.addList = functions.https.onRequest((req, res) => {
     // Grab the text parameter.
     const uid = req.query.uid;
@@ -75,7 +86,7 @@ exports.addList = functions.https.onRequest((req, res) => {
             return res.status(500).send(error);
         }
     });
- 
+
 });
 //Teste Local
 //http://localhost:5000/anota-backend/us-central1/addList?uid=12345&link=http://nfce.sefaz.pe.gov.br/nfce-web/consultarNFCe?chNFe=26180421920821000116650050000111779051519177&nVersao=100&tpAmb=1&dhEmi=323031382D30342D32345431343A33343A31342D30333A3030&vNF=68.23&vICMS=3.17&digVal=&cIdToken=000001&cHashQRCode=BFFC6C762A27D77FF8C8B8FDB6B83C6296F6014F
@@ -95,9 +106,4 @@ exports.addList = functions.https.onRequest((req, res) => {
 //         return snapshot.ref.parent.child('uppercase').set(uppercase);
 //     });
 
-//  
-
-
-
-
-
+//
