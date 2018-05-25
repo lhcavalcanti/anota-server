@@ -25,58 +25,68 @@ exports.addList = functions.https.onRequest((req, res) => {
     // Grab the text parameter.
     const uid = req.query.uid;
     const link = req.query.link;
-    request(link, (error, response, html) => {
+
+    var metadata = requestList(link, Date.now());
+    return saveList(uid, metadata);
+
+});
+
+
+
+function requestList(link, date) {
+    return request(link, (error, response, html) => {
         // console.log(html);
         if (!error) {
             let doc = cheerio.load(html);
 
-            // console.log(doc('xNome').text());
-            // console.log(doc('xFant').text());
-
             var metadata = {};
 
-            var prod = [];
+            var prodCode = [];
+            var prod = {};
             doc('cProd').each(function (i, element) {
-                prod[i] = {
-                    code: doc(this).text()
-                }
+                prodCode[i] =  doc(this).text();
             });
             doc('xProd').each(function (i, element) {
-                prod[i]['name'] = doc(this).text();
+                prod[prodCode[i]]['name'] = doc(this).text();
             });
             doc('uCom').each(function (i, element) {
-                prod[i]['un'] = doc(this).text();
+                prod[prodCode[i]]['un'] = doc(this).text();
             });
             doc('qCom').each(function (i, element) {
-                prod[i]['qtd'] = doc(this).text();
+                prod[prodCode[i]]['qtd'] = doc(this).text();
             });
             doc('vUnCom').each(function (i, element) {
-                prod[i]['priceUnit'] = doc(this).text();
+                prod[prodCode[i]]['priceUnit'] = doc(this).text();
             });
 
-            metadata = {
+            return metadata = {
                 name: doc('xNome').text(),
                 fantasyName: doc('xFant').text(),
-                prod: prod
+                prod: prod,
+                date: date
             };
-            // console.log(metadata);
+            console.log(metadata);
 
-            // Push the new message into the Realtime Database using the Firebase Admin SDK.
-            return admin.database().ref('/users/' + uid + "/lists/" + metadata.fantasyName).set(metadata).then(() => {
-                // Redirect with 303 SEE OTHER to the URL of the pushed object in the Firebase console.
-                // console.log(snapshot.ref.toString());
-                return res.status(200).send("OK");
-                //return res.redirect(303, snapshot.ref.toString());
-            });
+
+        } else {
+            console.log("request error");
+            return error;
         }
-        else {
-            console.log("Error na nota: ");
-            console.log(error);
-            return res.status(500).send(error);
-        }
+    });    
+}
+
+function saveList(uid, metadata) {
+    var listData = {
+        name: metadata.name,
+        prod: metadata.prod,
+        date: metadata.date
+    };
+    return admin.database().ref('/users/' + uid + "/lists/" + metadata.fantasyName).set(listData).then(() => {
+        admin.database().ref('/markets/' + metadata.fantasyName).update(listData).then(() => {
+            return res.status(200).send(metadata);
+        });
     });
- 
-});
+}
 //Teste Local
 //http://localhost:5000/anota-backend/us-central1/addList?uid=12345&link=http://nfce.sefaz.pe.gov.br/nfce-web/consultarNFCe?chNFe=26180421920821000116650050000111779051519177&nVersao=100&tpAmb=1&dhEmi=323031382D30342D32345431343A33343A31342D30333A3030&vNF=68.23&vICMS=3.17&digVal=&cIdToken=000001&cHashQRCode=BFFC6C762A27D77FF8C8B8FDB6B83C6296F6014F
 //http://localhost:5000/anota-backend/us-central1/addList?uid=12345&link=http://nfce.sefaz.pe.gov.br/nfce-web/consultarNFCe?chNFe=26180406057223027967650100000196741100418351&nVersao=100&tpAmb=1&dhEmi=323031382d30342d32395431303a32333a34322d30333a3030&vNF=663.96&vICMS=71.81&digVal=2f4e314952456f7149353159793352596972627664654e78574a413d&cIdToken=000001&cHashQRCode=3957073cfcd84f6ebb36718f179b3f65cf38f881
