@@ -16,7 +16,7 @@ const cheerio = require('cheerio');
 exports.getBestMarkets = functions.https.onRequest((req, res) => {
   const uid = req.query.uid;
 
-  return admin.database().ref('/users/' + uid).once('value').then(function(snapshot) {
+  return admin.database().ref('/users/' + uid).once('value').then( (snapshot) => {
     return res.status(200).send(snapshot.val().bestMarkets);
   });
 });
@@ -26,46 +26,45 @@ exports.addList = functions.https.onRequest((req, res) => {
     const uid = req.query.uid;
     const link = req.query.link;
 
-    var metadata = requestList(link, Date.now());
-    return saveList(uid, metadata);
+    requestList(link, uid, Date.now(), res);
 
 });
 
-
-
-function requestList(link, date) {
-    return request(link, (error, response, html) => {
-        // console.log(html);
+function requestList(link, uid, date, res) {
+    request(link, (error, response, html) => {
         if (!error) {
             let doc = cheerio.load(html);
 
-            var metadata = {};
-
             var prodCode = [];
             var prod = {};
-            doc('cProd').each(function (i, element) {
-                prodCode[i] =  doc(this).text();
-            });
             doc('xProd').each(function (i, element) {
-                prod[prodCode[i]]['name'] = doc(this).text();
+                prodCode[i] = doc(this).text();
+                prod[prodCode[i]] = {
+                    // name: doc(this).text()
+                };
+            });
+            doc('cProd').each(function (i, element) {
+                (prod[prodCode[i]])["code"] = doc(this).text();
             });
             doc('uCom').each(function (i, element) {
-                prod[prodCode[i]]['un'] = doc(this).text();
+                (prod[prodCode[i]])["un"] = doc(this).text();
             });
             doc('qCom').each(function (i, element) {
-                prod[prodCode[i]]['qtd'] = doc(this).text();
+                (prod[prodCode[i]])["qtd"] = doc(this).text();
             });
             doc('vUnCom').each(function (i, element) {
-                prod[prodCode[i]]['priceUnit'] = doc(this).text();
+                (prod[prodCode[i]])["priceUnit"] = doc(this).text();
             });
 
-            return metadata = {
+
+            metadata = {
                 name: doc('xNome').text(),
                 fantasyName: doc('xFant').text(),
                 prod: prod,
                 date: date
             };
-            console.log(metadata);
+
+            return saveList(uid, metadata, res);
 
 
         } else {
@@ -75,16 +74,19 @@ function requestList(link, date) {
     });    
 }
 
-function saveList(uid, metadata) {
+function saveList(uid, metadata, res) {
     var listData = {
         name: metadata.name,
         prod: metadata.prod,
         date: metadata.date
     };
+
+    
     return admin.database().ref('/users/' + uid + "/lists/" + metadata.fantasyName).set(listData).then(() => {
-        admin.database().ref('/markets/' + metadata.fantasyName).update(listData).then(() => {
-            return res.status(200).send(metadata);
-        });
+        return admin.database().ref('/markets/' + metadata.fantasyName).update(listData);
+        // TODO UPDATE PRODUCTS
+    }).then(() => {
+        return res.status(200).send("OK");
     });
 }
 //Teste Local
