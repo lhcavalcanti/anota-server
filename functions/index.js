@@ -170,28 +170,98 @@ getBestMarket = (list, price, snapshot) =>{
     return snapshot.ref.child('bestMarkets').set(bestMarkets);
   });
 
+exports.updateBestMarkets = functions.database.ref('/users/{pushId}/lists/{market}')
+    .onCreate((snapshot, context) => 
+    {
+     
+      [list, price] = getList(snapshot);
+      console.log("The User: ",context.params.pushId, 
+            " in the Market: ", context.params.market, 
+            " Bought: ", list,
+            " For: R$", price);
+
+      getBestMarket(list, price, snapshot)
+      
+     
+      return true;
+
+
+  });
+
+
+
+getBestMarket = (list, price, snapshot) =>{
+  var bestMarkets = []
+  
+  markets = database.ref('markets/').once('value').then(snap => {
+    marketPrice = 0;
+    
+    snap.forEach( market => {
+      marketPrice = 0;
+      var haveAllProducts = true;
+      var name = market.val().name
+      
+      var prodFullList = market.val().products
+      var prodList = market.child("products");
+    
+      list.forEach( (targetProduct, index) =>{
+        
+        if(prodFullList[targetProduct.name])
+        {
+          //console.log("Product Find: ", targetProduct.name, " At: ", prodFullList[targetProduct.name].priceUnit, targetProduct.qtd,index);
+          marketPrice += prodFullList[targetProduct.name].priceUnit*targetProduct.qtd;
+        } 
+        else{
+          //console.log("Product: ", targetProduct.name, " Not found");
+          marketPrice = -Infinity
+        }
+
+      });
+
+      if(marketPrice >= 0)
+      {
+        bestMarkets.push({
+          name: name,
+          price: marketPrice
+        });
+
+        console.log('A: ',bestMarkets);
+        
+      }
+  
+    console.log('A+: ',bestMarkets);
+    return true;
+    });
+
+    console.log('B: ',bestMarkets);
+    return snapshot.ref.child('bestMarkets').set(bestMarkets);
+  });
+
+  console.log('F: ',bestMarkets, markets);
   return markets;
 };
 
 let getList = (snapshot) =>{
-  var prod = snapshot.val().prod;
+  var prod = snapshot.child("prod").val();
   var list = []
   var price = 0.0
   if (prod)
   {
-    for(var product in prod)
-    {
-      list.push({
-        name: product,
-        qtd: parseFloat(prod[product].qtd)
-      });
+    prod.forEach( product =>{
+    
+    list.push({
+      name: product.name,
+      qtd: parseFloat(product.qtd)
+    });
+    itemPrice = parseFloat(product.priceUnit)*parseFloat(product.qtd)
+    price += itemPrice
 
-      itemPrice = parseFloat(prod[product].priceUnit)*parseFloat(prod[product].qtd)
-      price += itemPrice
-    }
+    } );
+  
   }
   
   return [list,price]
+
 };
 
 
