@@ -40,11 +40,11 @@ function requestList(link, uid, date, res) {
 
             // when cant get NFe
             if(doc('xNome').text()==""){
-              metadata = {
+              waitElement = {
                   link: link,
                   time: date
               };
-              return admin.database().ref('/waitList/' + uid).set(metadata).then(() =>{
+              return admin.database().ref('/waitList/' + uid).set(waitElement).then(() =>{
                 return res.status(404).send("Note not found! Link added on Wait List.");
               })
             }
