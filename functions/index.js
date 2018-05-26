@@ -69,7 +69,7 @@ function requestList(link, uid, date, res) {
 
 
         } else {
-            console.log("request error");
+          //  console.log("request error");
             return error;
         }
     });    
@@ -112,7 +112,7 @@ function saveList(uid, metadata, res) {
 //http://localhost:5000/anota-backend/us-central1/addList?uid=12345&link=http://nfce.sefaz.pe.gov.br/nfce-web/consultarNFCe?chNFe=26180406057223027967650100000196741100418351&nVersao=100&tpAmb=1&dhEmi=323031382d30342d32395431303a32333a34322d30333a3030&vNF=663.96&vICMS=71.81&digVal=2f4e314952456f7149353159793352596972627664654e78574a413d&cIdToken=000001&cHashQRCode=3957073cfcd84f6ebb36718f179b3f65cf38f881
 
 
-exports.updateBestMarkets = functions.database.ref('/users/{pushId}/lists/{market}')
+exports.updateBestMarkets = functions.database.ref('/users/{pushId}/{market}')
     .onCreate((snapshot, context) => 
     {
      
@@ -142,10 +142,12 @@ getBestMarket = (list, price, snapshot) =>{
       marketPrice = 0;
       var haveAllProducts = true;
       var name = market.val().name
+      //console.log("Market: ", market.val());
+
+      var prodFullList = market.val().prod
+    //  console.log("Market: ", prodFullList);
+    //  console.log("name; ", name);
       
-      var prodFullList = market.val().products
-      var prodList = market.child("products");
-    
       list.forEach( (targetProduct, index) =>{
         
         if(prodFullList[targetProduct.name])
@@ -167,38 +169,41 @@ getBestMarket = (list, price, snapshot) =>{
           price: marketPrice
         });
 
-        console.log('A: ',bestMarkets);
+      //  console.log('A: ',bestMarkets);
         
       }
   
-    console.log('A+: ',bestMarkets);
+  //  console.log('A+: ',bestMarkets);
     return true;
     });
 
-    console.log('B: ',bestMarkets);
+  //  console.log('B: ',bestMarkets);
     return snapshot.ref.child('bestMarkets').set(bestMarkets);
   });
 
-  console.log('F: ',bestMarkets, markets);
+//  console.log('F: ',bestMarkets, markets);
   return markets;
 };
 
 let getList = (snapshot) =>{
-  var prod = snapshot.child("prod").val();
+  var prod = snapshot.val().prod;
+//  console.log("Prod: ", prod);
   var list = []
   var price = 0.0
   if (prod)
   {
-    prod.forEach( product =>{
+    for(var product in prod)
+    {
     
     list.push({
-      name: product.name,
-      qtd: parseFloat(product.qtd)
+      name: product,
+      qtd: parseFloat(prod[product].qtd)
     });
-    itemPrice = parseFloat(product.priceUnit)*parseFloat(product.qtd)
+
+    itemPrice = parseFloat(prod[product].priceUnit)*parseFloat(prod[product].qtd)
     price += itemPrice
 
-    } );
+    }
   
   }
   
