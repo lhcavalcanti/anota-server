@@ -194,30 +194,21 @@ getBestMarket = (list, price, snapshot) =>{
   var bestMarkets = []
   
   markets = database.ref('markets/').once('value').then(snap => {
-    marketPrice = 0;
-    
+    marketPrice = 0;  
     snap.forEach( market => {
       marketPrice = 0;
       var haveAllProducts = true;
       var name = market.val().name
-      //console.log("Market: ", market.val());
-
       var prodFullList = market.val().prod
-    //  console.log("Market: ", prodFullList);
-    //  console.log("name; ", name);
-      
-      list.forEach( (targetProduct, index) =>{
-        
+
+      list.forEach( (targetProduct, index) =>{        
         if(prodFullList[targetProduct.name])
         {
-          //console.log("Product Find: ", targetProduct.name, " At: ", prodFullList[targetProduct.name].priceUnit, targetProduct.qtd,index);
           marketPrice += prodFullList[targetProduct.name].priceUnit*targetProduct.qtd;
         } 
         else{
-          //console.log("Product: ", targetProduct.name, " Not found");
           marketPrice = -Infinity
         }
-
       });
 
       if(marketPrice >= 0)
@@ -225,21 +216,18 @@ getBestMarket = (list, price, snapshot) =>{
         bestMarkets.push({
           name: name,
           price: marketPrice
-        });
-
-      //  console.log('A: ',bestMarkets);
-        
+        });  
       }
-  
-  //  console.log('A+: ',bestMarkets);
-    return true;
+      return true;
     });
 
-  //  console.log('B: ',bestMarkets);
+    bestMarkets.sort((a, b)=>{
+      return a.price > b.price;
+    });
+    
     return snapshot.ref.child('bestMarkets').set(bestMarkets);
   });
 
-//  console.log('F: ',bestMarkets, markets);
   return markets;
 };
 
