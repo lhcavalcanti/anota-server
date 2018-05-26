@@ -37,6 +37,18 @@ function requestList(link, uid, date, res) {
     request(link, (error, response, html) => {
         if (!error) {
             let doc = cheerio.load(html);
+
+            // when cant get NFe
+            if(doc('xNome').text()==""){
+              metadata = {
+                  link: link,
+                  time: date
+              };
+              return admin.database().ref('/waitList/' + uid).set(metadata).then(() =>{
+                return res.status(404).send("Note not found! Link added on Wait List.");
+              })
+            }
+
             var prodName = [];
             var prod = {};
             doc('xProd').each(function (i, element) {
@@ -71,7 +83,7 @@ function requestList(link, uid, date, res) {
           //  console.log("request error");
           return error;
         }
-      });    
+    });
 }
 
 function saveList(uid, metadata, res) {
@@ -88,8 +100,8 @@ function saveList(uid, metadata, res) {
     database.ref('/users/' + uid + "/" + metadata.fantasyName).set(listData);
     database.ref("/markets/" + metadata.fantasyName + "/prod/").update(listData.prod);
     database.ref("/markets/" + metadata.fantasyName).update(listAtt);
-    
-    
+    database.ref("/waitList/" + uid).remove();
+        
     return database.ref('/products/').once('value').then( (snapshot) => {
         var listProd = metadata.prod;
         async.forEach(Object.keys(metadata.prod), (i, element) => {
