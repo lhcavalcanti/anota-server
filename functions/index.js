@@ -170,7 +170,7 @@ getBestMarket = (list, price, snapshot) =>{
     return snapshot.ref.child('bestMarkets').set(bestMarkets);
   });
 
-exports.updateBestMarkets = functions.database.ref('/users/{pushId}/lists/{market}')
+exports.updateBestMarkets = functions.database.ref('/users/{pushId}/{market}')
     .onCreate((snapshot, context) => 
     {
      
@@ -200,10 +200,12 @@ getBestMarket = (list, price, snapshot) =>{
       marketPrice = 0;
       var haveAllProducts = true;
       var name = market.val().name
+      //console.log("Market: ", market.val());
+
+      var prodFullList = market.val().prod
+    //  console.log("Market: ", prodFullList);
+    //  console.log("name; ", name);
       
-      var prodFullList = market.val().products
-      var prodList = market.child("products");
-    
       list.forEach( (targetProduct, index) =>{
         
         if(prodFullList[targetProduct.name])
@@ -225,38 +227,41 @@ getBestMarket = (list, price, snapshot) =>{
           price: marketPrice
         });
 
-        console.log('A: ',bestMarkets);
+      //  console.log('A: ',bestMarkets);
         
       }
   
-    console.log('A+: ',bestMarkets);
+  //  console.log('A+: ',bestMarkets);
     return true;
     });
 
-    console.log('B: ',bestMarkets);
+  //  console.log('B: ',bestMarkets);
     return snapshot.ref.child('bestMarkets').set(bestMarkets);
   });
 
-  console.log('F: ',bestMarkets, markets);
+//  console.log('F: ',bestMarkets, markets);
   return markets;
 };
 
 let getList = (snapshot) =>{
-  var prod = snapshot.child("prod").val();
+  var prod = snapshot.val().prod;
+//  console.log("Prod: ", prod);
   var list = []
   var price = 0.0
   if (prod)
   {
-    prod.forEach( product =>{
+    for(var product in prod)
+    {
     
     list.push({
-      name: product.name,
-      qtd: parseFloat(product.qtd)
+      name: product,
+      qtd: parseFloat(prod[product].qtd)
     });
-    itemPrice = parseFloat(product.priceUnit)*parseFloat(product.qtd)
+
+    itemPrice = parseFloat(prod[product].priceUnit)*parseFloat(prod[product].qtd)
     price += itemPrice
 
-    } );
+    }
   
   }
   
