@@ -70,7 +70,7 @@ function requestList(link, uid, date, res) {
 
 
         } else {
-            console.log("request error");
+          //  console.log("request error");
             return error;
         }
     });    
@@ -101,7 +101,7 @@ function saveList(uid, metadata, res) {
 //     .onCreate((snapshot, context) => {
 //         // Grab the current value of what was written to the Realtime Database.
 //         const original = snapshot.val();
-//         console.log('Uppercasing', context.params.pushId, original);
+//       //  console.log('Uppercasing', context.params.pushId, original);
 //         const uppercase = original.toUpperCase();
 //         // You must return a Promise when performing asynchronous tasks inside a Functions such as
 //         // writing to the Firebase Realtime Database.
@@ -113,7 +113,7 @@ function saveList(uid, metadata, res) {
 
 
 
-exports.updateBestMarkets = functions.database.ref('/users/{pushId}/lists/{market}')
+exports.updateBestMarkets = functions.database.ref('/users/{pushId}/{market}')
     .onCreate((snapshot, context) => 
     {
      
@@ -143,10 +143,12 @@ getBestMarket = (list, price, snapshot) =>{
       marketPrice = 0;
       var haveAllProducts = true;
       var name = market.val().name
+      //console.log("Market: ", market.val());
+
+      var prodFullList = market.val().prod
+    //  console.log("Market: ", prodFullList);
+    //  console.log("name; ", name);
       
-      var prodFullList = market.val().products
-      var prodList = market.child("products");
-    
       list.forEach( (targetProduct, index) =>{
         
         if(prodFullList[targetProduct.name])
@@ -168,38 +170,41 @@ getBestMarket = (list, price, snapshot) =>{
           price: marketPrice
         });
 
-        console.log('A: ',bestMarkets);
+      //  console.log('A: ',bestMarkets);
         
       }
   
-    console.log('A+: ',bestMarkets);
+  //  console.log('A+: ',bestMarkets);
     return true;
     });
 
-    console.log('B: ',bestMarkets);
+  //  console.log('B: ',bestMarkets);
     return snapshot.ref.child('bestMarkets').set(bestMarkets);
   });
 
-  console.log('F: ',bestMarkets, markets);
+//  console.log('F: ',bestMarkets, markets);
   return markets;
 };
 
 let getList = (snapshot) =>{
-  var prod = snapshot.child("prod").val();
+  var prod = snapshot.val().prod;
+//  console.log("Prod: ", prod);
   var list = []
   var price = 0.0
   if (prod)
   {
-    prod.forEach( product =>{
+    for(var product in prod)
+    {
     
     list.push({
-      name: product.name,
-      qtd: parseFloat(product.qtd)
+      name: product,
+      qtd: parseFloat(prod[product].qtd)
     });
-    itemPrice = parseFloat(product.priceUnit)*parseFloat(product.qtd)
+
+    itemPrice = parseFloat(prod[product].priceUnit)*parseFloat(prod[product].qtd)
     price += itemPrice
 
-    } );
+    }
   
   }
   
