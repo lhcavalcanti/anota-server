@@ -3,7 +3,7 @@
 // // Create and Deploy Your First Cloud Functions
 // // https://firebase.google.com/docs/functions/write-firebase-functions
 
-
+var async = require('async');
 const functions = require('firebase-functions');
 
 // The Firebase Admin SDK to access the Firebase Realtime Database.
@@ -19,6 +19,7 @@ exports.getBestMarkets = functions.https.onRequest((req, res) => {
   return admin.database().ref('/users/' + uid).once('value').then( (snapshot) => {
     return res.status(200).send(snapshot.val().bestMarkets);
   });
+
 });
 
 exports.addList = functions.https.onRequest((req, res) => {
@@ -27,7 +28,6 @@ exports.addList = functions.https.onRequest((req, res) => {
     const link = req.query.link;
 
     requestList(link, uid, Date.now(), res);
-
 });
 
 function requestList(link, uid, date, res) {
@@ -35,27 +35,26 @@ function requestList(link, uid, date, res) {
         if (!error) {
             let doc = cheerio.load(html);
 
-            var prodCode = [];
+            var prodName = [];
             var prod = {};
             doc('xProd').each(function (i, element) {
-                prodCode[i] = doc(this).text();
-                prod[prodCode[i]] = {
+                prodName[i] = doc(this).text();
+                prod[prodName[i]] = {
                     // name: doc(this).text()
                 };
             });
             doc('cProd').each(function (i, element) {
-                (prod[prodCode[i]])["code"] = doc(this).text();
+                (prod[prodName[i]])["code"] = doc(this).text();
             });
             doc('uCom').each(function (i, element) {
-                (prod[prodCode[i]])["un"] = doc(this).text();
+                (prod[prodName[i]])["un"] = doc(this).text();
             });
             doc('qCom').each(function (i, element) {
-                (prod[prodCode[i]])["qtd"] = doc(this).text();
+                (prod[prodName[i]])["qtd"] = doc(this).text();
             });
             doc('vUnCom').each(function (i, element) {
-                (prod[prodCode[i]])["priceUnit"] = doc(this).text();
+                (prod[prodName[i]])["priceUnit"] = doc(this).text();
             });
-
 
             metadata = {
                 name: doc('xNome').text(),
@@ -81,10 +80,14 @@ function saveList(uid, metadata, res) {
         date: metadata.date
     };
 
-    
-    return admin.database().ref('/users/' + uid + "/lists/" + metadata.fantasyName).set(listData).then(() => {
-        return admin.database().ref('/markets/' + metadata.fantasyName).update(listData);
-        // TODO UPDATE PRODUCTS
+    var listProd = metadata.prod;
+    async.forEach(listProd, (i, element) => {
+        (i)["market"] = metadata.fantasyName;
+    });    
+    return admin.database().ref('/users/' + uid + "/" + metadata.fantasyName).set(listData).then(() => {
+        return admin.database().ref('/markets/' + metadata.fantasyName).update(listData);    
+    }).then(() => {
+        return admin.database().ref('/products').update(listProd);
     }).then(() => {
         return res.status(200).send("OK");
     });
