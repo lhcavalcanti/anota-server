@@ -12,6 +12,8 @@ admin.initializeApp();
 
 const request = require('request');
 const cheerio = require('cheerio');
+var database = admin.database();
+
 
 exports.getBestMarkets = functions.https.onRequest((req, res) => {
   const uid = req.query.uid;
@@ -110,5 +112,98 @@ function saveList(uid, metadata, res) {
 //http://localhost:5000/anota-backend/us-central1/addList?uid=12345&link=http://nfce.sefaz.pe.gov.br/nfce-web/consultarNFCe?chNFe=26180406057223027967650100000196741100418351&nVersao=100&tpAmb=1&dhEmi=323031382d30342d32395431303a32333a34322d30333a3030&vNF=663.96&vICMS=71.81&digVal=2f4e314952456f7149353159793352596972627664654e78574a413d&cIdToken=000001&cHashQRCode=3957073cfcd84f6ebb36718f179b3f65cf38f881
 
 
+exports.updateBestMarkets = functions.database.ref('/users/{pushId}/lists/{market}')
+    .onCreate((snapshot, context) => 
+    {
+     
+      [list, price] = getList(snapshot);
+      console.log("The User: ",context.params.pushId, 
+            " in the Market: ", context.params.market, 
+            " Bought: ", list,
+            " For: R$", price);
+
+      getBestMarket(list, price, snapshot)
+      
+     
+      return true;
+
+
+  });
+
+
+
+getBestMarket = (list, price, snapshot) =>{
+  var bestMarkets = []
+  
+  markets = database.ref('markets/').once('value').then(snap => {
+    marketPrice = 0;
+    
+    snap.forEach( market => {
+      marketPrice = 0;
+      var haveAllProducts = true;
+      var name = market.val().name
+      
+      var prodFullList = market.val().products
+      var prodList = market.child("products");
+    
+      list.forEach( (targetProduct, index) =>{
+        
+        if(prodFullList[targetProduct.name])
+        {
+          //console.log("Product Find: ", targetProduct.name, " At: ", prodFullList[targetProduct.name].priceUnit, targetProduct.qtd,index);
+          marketPrice += prodFullList[targetProduct.name].priceUnit*targetProduct.qtd;
+        } 
+        else{
+          //console.log("Product: ", targetProduct.name, " Not found");
+          marketPrice = -Infinity
+        }
+
+      });
+
+      if(marketPrice >= 0)
+      {
+        bestMarkets.push({
+          name: name,
+          price: marketPrice
+        });
+
+        console.log('A: ',bestMarkets);
+        
+      }
+  
+    console.log('A+: ',bestMarkets);
+    return true;
+    });
+
+    console.log('B: ',bestMarkets);
+    return snapshot.ref.child('bestMarkets').set(bestMarkets);
+  });
+
+  console.log('F: ',bestMarkets, markets);
+  return markets;
+};
+
+let getList = (snapshot) =>{
+  var prod = snapshot.child("prod").val();
+  var list = []
+  var price = 0.0
+  if (prod)
+  {
+    prod.forEach( product =>{
+    
+    list.push({
+      name: product.name,
+      qtd: parseFloat(product.qtd)
+    });
+    itemPrice = parseFloat(product.priceUnit)*parseFloat(product.qtd)
+    price += itemPrice
+
+    } );
+  
+  }
+  
+  return [list,price]
+
+};
 
 
