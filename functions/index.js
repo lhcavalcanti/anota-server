@@ -176,28 +176,23 @@ getBestMarket = (list, price, snapshot) =>{
 
 let getList = (snapshot) =>{
   var prod = snapshot.val().prod;
-//  console.log("Prod: ", prod);
   var list = []
   var price = 0.0
   if (prod)
   {
     for(var product in prod)
     {
-    
-    list.push({
-      name: product,
-      qtd: parseFloat(prod[product].qtd)
-    });
+      list.push({
+        name: product,
+        qtd: parseFloat(prod[product].qtd)
+      });
 
-    itemPrice = parseFloat(prod[product].priceUnit)*parseFloat(prod[product].qtd)
-    price += itemPrice
-
+      itemPrice = parseFloat(prod[product].priceUnit)*parseFloat(prod[product].qtd)
+      price += itemPrice
     }
-  
   }
   
   return [list,price]
-
 };
 
 
