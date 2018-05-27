@@ -33,6 +33,15 @@ exports.addList = functions.https.onRequest((req, res) => {
     requestList(link, uid, now.toJSON(), res);
 });
 
+exports.retryList = functions.https.onRequest((req, res) => {
+  var wl = admin.database().ref('/waitList/');
+  wl.orderByChild("time").on("child_added", function(snapshot) {
+    requestList(snapshot.val().link, snapshot.key, snapshot.val().time, res);
+    console.log(snapshot.key + " link " + snapshot.val().link + " and time: " + snapshot.val().time + ' status: ' + res.statusCode);
+  });
+  // return res.status(200).send('Retry Wait List')
+});
+
 function requestList(link, uid, date, res) {
     request(link, (error, response, html) => {
         if (!error) {
