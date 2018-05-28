@@ -3,7 +3,7 @@
 // // Create and Deploy Your First Cloud Functions
 // // https://firebase.google.com/docs/functions/write-firebase-functions
 
-var async = require('async');
+
 const functions = require('firebase-functions');
 
 // The Firebase Admin SDK to access the Firebase Realtime Database.
@@ -21,7 +21,6 @@ exports.getBestMarkets = functions.https.onRequest((req, res) => {
   return admin.database().ref('/users/' + uid).once('value').then( (snapshot) => {
     return res.status(200).send(snapshot.val().bestMarkets);
   });
-
 });
 
 exports.addList = functions.https.onRequest((req, res) => {
@@ -43,32 +42,33 @@ function requestList(link, uid, date, res) {
                 prodName[i] = doc(this).text().replace(/\/|\&|\*|\%/g, " ");
                 prod[prodName[i]] = {
                     // name: doc(this).text()
-                };
-            });
-            doc('cProd').each(function (i, element) {
-                (prod[prodName[i]])["code"] = doc(this).text();
-            });
-            doc('uCom').each(function (i, element) {
-                (prod[prodName[i]])["un"] = doc(this).text();
-            });
-            doc('qCom').each(function (i, element) {
-                (prod[prodName[i]])["qtd"] = doc(this).text();
-            });
-            doc('vUnCom').each(function (i, element) {
-                (prod[prodName[i]])["priceUnit"] = doc(this).text();
-            });
-
-            metadata = {
-                name: doc('xNome').text(),
-                fantasyName: doc('xFant').text(),
-                prod: prod,
-                date: date
-            };
-
-            return saveList(uid, metadata, res);
+                  };
+                });
+      doc('cProd').each(function (i, element) {
+        (prod[prodCode[i]])["code"] = doc(this).text();
+      });
+      doc('uCom').each(function (i, element) {
+        (prod[prodCode[i]])["un"] = doc(this).text();
+      });
+      doc('qCom').each(function (i, element) {
+        (prod[prodCode[i]])["qtd"] = doc(this).text();
+      });
+      doc('vUnCom').each(function (i, element) {
+        (prod[prodCode[i]])["priceUnit"] = doc(this).text();
+      });
 
 
-        } else {
+      metadata = {
+        name: doc('xNome').text(),
+        fantasyName: doc('xFant').text(),
+        prod: prod,
+        date: date
+      };
+
+      return saveList(uid, metadata, res);
+
+
+    } else {
           //  console.log("request error");
           return error;
         }
@@ -113,22 +113,15 @@ function saveList(uid, metadata, res) {
 
 
 exports.updateBestMarkets = functions.database.ref('/users/{pushId}/{market}')
-    .onCreate((snapshot, context) => 
-    {
-     
-      [list, price] = getList(snapshot);
-      console.log("The User: ",context.params.pushId, 
-            " in the Market: ", context.params.market, 
-            " Bought: ", list,
-            " For: R$", price);
+.onCreate((snapshot, context) => 
+{
 
-      getBestMarket(list, price, snapshot)
-      
-     
-      return true;
+  [list, price] = getList(snapshot);
+  getBestMarket(list, price, snapshot)
 
+  return true;
 
-  });
+});
 
 
 
@@ -136,8 +129,10 @@ getBestMarket = (list, price, snapshot) =>{
   var bestMarkets = []
   
   markets = database.ref('markets/').once('value').then(snap => {
+
     marketPrice = 0;  
     snap.forEach( market => {
+      
       marketPrice = 0;
       var haveAllProducts = true;
       var name = market.val().name
@@ -149,7 +144,7 @@ getBestMarket = (list, price, snapshot) =>{
           marketPrice += prodFullList[targetProduct.name].priceUnit*targetProduct.qtd;
         } 
         else{
-          marketPrice = -Infinity
+          marketPrice = -Infinity;
         }
       });
 
@@ -160,14 +155,19 @@ getBestMarket = (list, price, snapshot) =>{
           price: marketPrice
         });  
       }
-      return true;
     });
 
-    bestMarkets.sort((a, b)=>{
-      return a.price > b.price;
-    });
-    
-    return snapshot.ref.child('bestMarkets').set(bestMarkets);
+    if(bestMarkets)
+    {
+      
+      bestMarkets.sort((a, b)=>{
+        return a.price > b.price;
+      });
+
+      return snapshot.ref.child('bestMarkets').set(bestMarkets);  
+    }
+
+    return true;
   });
 
 exports.updateBestMarkets = functions.database.ref('/users/{pushId}/{market}')
