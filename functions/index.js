@@ -39,10 +39,10 @@ exports.retryList = functions.https.onRequest((req, res) => {
   return waitElements.once('value').then((snapshot)=>{
     snapshot.forEach(elem => {
       console.log(elem.key + " link " + elem.val().link + " and time: " + elem.val().time);
-      requestList(elem.val().link, elem.key, elem.val().time, res);
-    }).then(() => {
-      return res.status(200).send('Retry Wait List');
+      requestList(elem.val().link, elem.key, elem.val().time, res)
     });
+  }).then(() =>{
+    return res.status(200).send('Retry Wait List\n');
   });
 });
 
@@ -58,7 +58,7 @@ function requestList(link, uid, date, res) {
                   time: date
               };
               return admin.database().ref('/waitList/' + uid).set(waitElement).then(() =>{
-                return res.status(404).send("Note not found! Link added on Wait List.");
+                return res.status(404).send("NFe not found! Link added on Wait List.");
               })
             }
 
