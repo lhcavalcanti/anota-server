@@ -38,19 +38,12 @@ exports.retryList = functions.https.onRequest((req, res) => {
   const waitElements = wl.orderByChild('time');
   return waitElements.once('value').then((snapshot)=>{
     snapshot.forEach(elem => {
-    //console.log(elem.key + " link " + elem.val().link + " and time: " + elem.val().time);
-    requestList(elem.val().link, elem.key, elem.val().time, res);
-    }).then(() =>{
+      console.log(elem.key + " link " + elem.val().link + " and time: " + elem.val().time);
+      requestList(elem.val().link, elem.key, elem.val().time, res);
+    }).then(() => {
       return res.status(200).send('Retry Wait List');
     });
   });
-  // wl.orderByChild("time").on("child_added", function(snapshot) {
-  //   requestList(snapshot.val().link, snapshot.key, snapshot.val().time, res);
-  //   console.log(snapshot.key + " link " + snapshot.val().link + " and time: " + snapshot.val().time);
-  //   admin.database().ref('/waitList/'+snapshot.key).remove()
-  // });
-
-  //return res.status(200).send('Retry Wait List')
 });
 
 function requestList(link, uid, date, res) {
