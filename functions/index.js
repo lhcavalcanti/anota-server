@@ -38,13 +38,89 @@ exports.retryList = functions.https.onRequest((req, res) => {
   const waitElements = wl.orderByChild('time');
   return waitElements.once('value').then((snapshot)=>{
     snapshot.forEach(elem => {
-      console.log(elem.key + " link " + elem.val().link + " and time: " + elem.val().time);
-      requestList(elem.val().link, elem.key, elem.val().time, res)
+      // console.log(elem.key + " link " + elem.val().link + " and time: " + elem.val().time);
+      requestList_noResponse(elem.val().link, elem.key, elem.val().time, res)
     });
   }).then(() =>{
     return res.status(200).send('Retry Wait List\n');
   });
 });
+
+function requestList_noResponse(link, uid, date, res) {
+    request(link, (error, response, html) => {
+        if (!error) {
+            let doc = cheerio.load(html);
+
+            // when cant get NFe
+            if(doc('xNome').text()==""){
+              waitElement = {
+                  link: link,
+                  time: date
+              };
+              return admin.database().ref('/waitList/' + uid).set(waitElement).then(() =>{
+                console.log("requestList_noResponse - NFe not found! Link added on Wait List");
+              })
+            }
+
+            var prodName = [];
+            var prod = {};
+            doc('xProd').each(function (i, element) {
+                prodName[i] = doc(this).text();
+                prod[prodName[i]] = {
+                    // name: doc(this).text()
+                };
+            });
+            doc('cProd').each(function (i, element) {
+                (prod[prodName[i]])["code"] = doc(this).text();
+            });
+            doc('uCom').each(function (i, element) {
+                (prod[prodName[i]])["un"] = doc(this).text();
+            });
+            doc('qCom').each(function (i, element) {
+                (prod[prodName[i]])["qtd"] = doc(this).text();
+            });
+            doc('vUnCom').each(function (i, element) {
+                (prod[prodName[i]])["priceUnit"] = doc(this).text();
+            });
+
+            metadata = {
+                name: doc('xNome').text(),
+                fantasyName: doc('xFant').text(),
+                prod: prod,
+                date: date
+            };
+
+            return saveList_noResponse(uid, metadata, res);
+
+
+        } else {
+            console.log("request error");
+            return error;
+        }
+    });
+}
+
+function saveList_noResponse(uid, metadata, res) {
+    var listData = {
+        name: metadata.name,
+        prod: metadata.prod,
+        date: metadata.date
+    };
+
+    var listProd = metadata.prod;
+    async.forEach(listProd, (i, element) => {
+        (i)["market"] = metadata.fantasyName;
+    });
+    return admin.database().ref('/users/' + uid + "/" + metadata.fantasyName).set(listData).then(() => {
+        return admin.database().ref('/markets/' + metadata.fantasyName).update(listData);
+    }).then(() => {
+        return admin.database().ref('/products').update(listProd);
+    }).then(() => {
+        return admin.database().ref('/waitList/' + uid).remove();
+    }).then(() => {
+        console.log("saveList_noResponse - NFe found OK!")
+    });
+}
 
 function requestList(link, uid, date, res) {
     request(link, (error, response, html) => {
