@@ -156,66 +156,19 @@ getBestMarket = (list, price, snapshot) =>{
     }
     return true;
   });
+}
 
-exports.updateBestMarkets = functions.database.ref('/users/{pushId}/{market}')
-.onCreate((snapshot, context) => 
-{
-  [list, price] = getList(snapshot);
-  console.log("The User: ",context.params.pushId, 
-    " in the Market: ", context.params.market, 
-    " Bought: ", list,
-    " For: R$", price);
-
-  getBestMarket(list, price, snapshot)
-  return true;
-});
-
-getBestMarket = (list, price, snapshot) =>{
-  var bestMarkets = []
-  markets = database.ref('markets/').once('value').then(snap => {
-    marketPrice = 0;  
-    snap.forEach( market => {
-      marketPrice = 0;
-      var haveAllProducts = true;
-      var name = market.val().name;
-      var prodFullList = market.val().prod;
-
-      list.forEach( (targetProduct, index) =>{        
-        if(prodFullList[targetProduct.name])
-        {
-          marketPrice += prodFullList[targetProduct.name].priceUnit*targetProduct.qtd;
-        } 
-        else{
-          marketPrice = -Infinity;
-        }
-      });
-      if(marketPrice >= 0) {
-        bestMarkets.push({
-          name: name,
-          price: marketPrice
-        });  
-      }
-    });
-
-    if(bestMarkets) {
-      bestMarkets.sort((a, b)=>{
-        return a.price > b.price;
-      });
-
-      return snapshot.ref.child('bestMarkets').set(bestMarkets);  
-    }
-    return true;
-  });
-  return markets;
-};
 
 let getList = (snapshot) => {
   var prod = snapshot.val().prod;
   var list = [];
   var price = 0.0;
-  if (prod) {
-    for(var product in prod) {
-      list.push({
+  if (prod) 
+  {
+    for(var product in prod) 
+    {
+      list.push(
+      {
         name: product,
         qtd: parseFloat(prod[product].qtd)
       });
@@ -224,6 +177,6 @@ let getList = (snapshot) => {
       price += itemPrice
     }
   }
+  
   return [list,price]
 };
-}
