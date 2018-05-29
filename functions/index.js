@@ -58,7 +58,7 @@ function requestList_noResponse(link, uid, date, res) {
                   time: date
               };
               return admin.database().ref('/waitList/' + uid).set(waitElement).then(() =>{
-
+                console.log("NFe not found! Link added on Wait List.")
               })
             }
 
@@ -100,35 +100,37 @@ function requestList_noResponse(link, uid, date, res) {
 }
 
 function saveList_noResponse(uid, metadata, res) {
-    var listData = {
-        name: metadata.name,
-        prod: metadata.prod,
-        date: metadata.date
-    };
-    var listAtt = {
-        name: metadata.name,
-        date: metadata.date
-    };
+  var listData = {
+      name: metadata.name,
+      prod: metadata.prod,
+      date: metadata.date
+  };
+  var listAtt = {
+      name: metadata.name,
+      date: metadata.date
+  };
 
-    database.ref('/users/' + uid + "/" + metadata.fantasyName).set(listData);
-    database.ref("/markets/" + metadata.fantasyName + "/prod/").update(listData.prod);
-    database.ref("/markets/" + metadata.fantasyName).update(listAtt);
-    database.ref('/waitList/' + uid).remove();
+  database.ref('/users/' + uid + "/" + metadata.fantasyName).set(listData);
+  database.ref("/markets/" + metadata.fantasyName + "/prod/").update(listData.prod);
+  database.ref("/markets/" + metadata.fantasyName).update(listAtt);
+  database.ref('/waitList/' + uid).remove();
 
-    return database.ref('/products/').once('value').then( (snapshot) => {
-        var listProd = metadata.prod;
-        async.forEach(Object.keys(metadata.prod), (i, element) => {
-            var markets = {};
-            if (snapshot.val()){
-                if(snapshot.val()[i])
-                    markets = snapshot.val()[i]["markets"];
-            }
-            markets[metadata.fantasyName] = true;
-            listProd[i]["markets"] = markets;
-        });
-        database.ref("/products/").update(listProd);
-        console.log("saveList_noResponse - NFe found OK!")
-    });
+  return database.ref('/products/').once('value').then( (snapshot) => {
+      var listProd = metadata.prod;
+      async.forEach(Object.keys(metadata.prod), (i, element) => {
+          var markets = {};
+          if (snapshot.val() !== null){
+              if(snapshot.val()[i]) {
+                  if (snapshot.val()[i]["markets"])
+                      markets = snapshot.val()[i]["markets"];
+              }
+          }
+          markets[metadata.fantasyName] = true;
+          listProd[i]["markets"] = markets;
+      });
+      database.ref("/products/").update(listProd);
+      console.log("saveList_noResponse - NFe found OK!")
+  });
 
 }
 
@@ -215,7 +217,6 @@ function saveList(uid, metadata, res) {
             listProd[i]["markets"] = markets;
         });
         database.ref("/products/").update(listProd);
-        console.log("chegou auqi")
         return res.status(200).send("OK");
     });
 
