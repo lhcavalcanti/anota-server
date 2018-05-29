@@ -18,7 +18,7 @@ var database = admin.database();
 exports.getBestMarkets = functions.https.onRequest((req, res) => {
   const uid = req.query.uid;
 
-  return admin.database().ref('/users/' + uid).once('value').then( (snapshot) => {
+  return database.ref('/users/' + uid).once('value').then( (snapshot) => {
     return res.status(200).send(snapshot.val().bestMarkets);
   });
 });
@@ -57,7 +57,6 @@ function requestList(link, uid, date, res) {
         (prod[prodCode[i]])["priceUnit"] = doc(this).text();
       });
 
-
       metadata = {
         name: doc('xNome').text(),
         fantasyName: doc('xFant').text(),
@@ -66,7 +65,6 @@ function requestList(link, uid, date, res) {
       };
 
       return saveList(uid, metadata, res);
-
 
     } else {
           //  console.log("request error");
@@ -86,11 +84,11 @@ function saveList(uid, metadata, res) {
         date: metadata.date
     };
     
-    return admin.database().ref('/users/' + uid + "/" + metadata.fantasyName).set(listData).then(() => {
-        admin.database().ref("/markets/" + metadata.fantasyName + "/prod/").update(listData.prod);
-        return admin.database().ref("/markets/" + metadata.fantasyName).update(listAtt);    
+    return database.ref('/users/' + uid + "/" + metadata.fantasyName).set(listData).then(() => {
+        database.ref("/markets/" + metadata.fantasyName + "/prod/").update(listData.prod);
+        return database.ref("/markets/" + metadata.fantasyName).update(listAtt);    
     }).then(() => {
-        return admin.database().ref('/products/').once('value').then( (snapshot) => {
+        return database.ref('/products/').once('value').then( (snapshot) => {
             var listProd = metadata.prod;
             async.forEach(Object.keys(metadata.prod), (i, element) => {
                 var markets = {};
@@ -101,7 +99,7 @@ function saveList(uid, metadata, res) {
                 markets[metadata.fantasyName] = true;
                 listProd[i]["markets"] = markets;
             });
-            admin.database().ref("/products/").update(listProd);
+            database.ref("/products/").update(listProd);
         });        
     }).then(() => {
         return res.status(200).send("OK");
@@ -117,8 +115,7 @@ exports.updateBestMarkets = functions.database.ref('/users/{pushId}/{market}')
 {
 
   [list, price] = getList(snapshot);
-  getBestMarket(list, price, snapshot)
-
+  getBestMarket(list, price, snapshot);
   return true;
 
 });
@@ -126,54 +123,43 @@ exports.updateBestMarkets = functions.database.ref('/users/{pushId}/{market}')
 
 
 getBestMarket = (list, price, snapshot) =>{
-  var bestMarkets = []
+  var bestMarkets = [];
   
   markets = database.ref('markets/').once('value').then(snap => {
-
     marketPrice = 0;  
     snap.forEach( market => {
-      
       marketPrice = 0;
       var haveAllProducts = true;
-      var name = market.val().name
-      var prodFullList = market.val().prod
+      var name = market.val().name;
+      var prodFullList = market.val().prod;
 
       list.forEach( (targetProduct, index) =>{        
-        if(prodFullList[targetProduct.name])
-        {
+        if(prodFullList[targetProduct.name]) {
           marketPrice += prodFullList[targetProduct.name].priceUnit*targetProduct.qtd;
         } 
-        else{
+        else {
           marketPrice = -Infinity;
         }
       });
-
-      if(marketPrice >= 0)
-      {
+      if(marketPrice >= 0) {
         bestMarkets.push({
           name: name,
           price: marketPrice
         });  
       }
     });
-
-    if(bestMarkets)
-    {
-      
+    if(bestMarkets) {
       bestMarkets.sort((a, b)=>{
         return a.price > b.price;
       });
-
       return snapshot.ref.child('bestMarkets').set(bestMarkets);  
     }
-
     return true;
   });
 
 exports.updateBestMarkets = functions.database.ref('/users/{pushId}/{market}')
 .onCreate((snapshot, context) => 
 {
-
   [list, price] = getList(snapshot);
   console.log("The User: ",context.params.pushId, 
     " in the Market: ", context.params.market, 
@@ -181,27 +167,20 @@ exports.updateBestMarkets = functions.database.ref('/users/{pushId}/{market}')
     " For: R$", price);
 
   getBestMarket(list, price, snapshot)
-
-
   return true;
-
-
 });
 
 
 
 getBestMarket = (list, price, snapshot) =>{
   var bestMarkets = []
-  
   markets = database.ref('markets/').once('value').then(snap => {
-
     marketPrice = 0;  
     snap.forEach( market => {
-      
       marketPrice = 0;
       var haveAllProducts = true;
-      var name = market.val().name
-      var prodFullList = market.val().prod
+      var name = market.val().name;
+      var prodFullList = market.val().prod;
 
       list.forEach( (targetProduct, index) =>{        
         if(prodFullList[targetProduct.name])
@@ -212,9 +191,7 @@ getBestMarket = (list, price, snapshot) =>{
           marketPrice = -Infinity;
         }
       });
-
-      if(marketPrice >= 0)
-      {
+      if(marketPrice >= 0) {
         bestMarkets.push({
           name: name,
           price: marketPrice
@@ -222,40 +199,33 @@ getBestMarket = (list, price, snapshot) =>{
       }
     });
 
-    if(bestMarkets)
-    {
-      
+    if(bestMarkets) {
       bestMarkets.sort((a, b)=>{
         return a.price > b.price;
       });
 
       return snapshot.ref.child('bestMarkets').set(bestMarkets);  
     }
-
     return true;
   });
-
   return markets;
 };
 
 let getList = (snapshot) =>{
   var prod = snapshot.val().prod;
-  var list = []
-  var price = 0.0
-  if (prod)
-  {
-    for(var product in prod)
-    {
+  var list = [];
+  var price = 0.0;
+  if (prod) {
+    for(var product in prod) {
       list.push({
         name: product,
         qtd: parseFloat(prod[product].qtd)
       });
 
-      itemPrice = parseFloat(prod[product].priceUnit)*parseFloat(prod[product].qtd)
+      itemPrice = parseFloat(prod[product].priceUnit) * parseFloat(prod[product].qtd);
       price += itemPrice
     }
   }
-  
   return [list,price]
 };
 
