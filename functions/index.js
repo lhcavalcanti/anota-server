@@ -30,196 +30,123 @@ exports.addList = functions.https.onRequest((req, res) => {
   const uid = req.query.uid;
   const link = req.query.link;
   var now = new Date();
-  requestList(link, uid, now.toJSON(), res);
+  return requestList(link, uid, now.toJSON()).then((result) => {
+      return res.status(200).send(result);
+  }, (err) => {
+      return res.status(500).send(err);
+  });
 });
 
 exports.retryList = functions.https.onRequest((req, res) => {
-  var wl = admin.database().ref('/waitList/');
+  var wl = database.ref('/waitList/');
   const waitElements = wl.orderByChild('time');
-  return waitElements.once('value').then((snapshot)=>{
+   return waitElements.once('value').then((snapshot)=>{
     snapshot.forEach(elem => {
       // console.log(elem.key + " link " + elem.val().link + " and time: " + elem.val().time);
-      requestList_noResponse(elem.val().link, elem.key, elem.val().time, res)
+      requestList(elem.val().link, elem.key, elem.val().time);
     });
+    return true;
   }).then(() =>{
     return res.status(200).send('Retry Wait List\n');
   });
 });
 
-function requestList_noResponse(link, uid, date, res) {
-  request(link, (error, response, html) => {
-    if (!error) {
-      let doc = cheerio.load(html);
-      
-      // when cant get NFe
-      if(doc('xNome').text()==""){
-        waitElement = {
-          link: link,
-          time: date
-        };
-        return admin.database().ref('/waitList/' + uid).set(waitElement).then(() =>{
-          console.log("NFe not found! Link added on Wait List.")
-        })
-      }
-      
-      var prodName = [];
-      var prod = {};
-      doc('xProd').each(function (i, element) {
-        prodName[i] = doc(this).text().replace(/\/|&|\*|%/g, " ");
-        prod[prodName[i]] = {
-          // name: doc(this).text()
-        };
-      });
-      doc('cProd').each(function (i, element) {
-        (prod[prodName[i]])["code"] = doc(this).text();
-      });
-      doc('uCom').each(function (i, element) {
-        (prod[prodName[i]])["un"] = doc(this).text();
-      });
-      doc('qCom').each(function (i, element) {
-        (prod[prodName[i]])["qtd"] = doc(this).text();
-      });
-      doc('vUnCom').each(function (i, element) {
-        (prod[prodName[i]])["priceUnit"] = doc(this).text();
-      });
-      
-      metadata = {
-        name: doc('xNome').text(),
-        fantasyName: doc('xFant').text(),
-        prod: prod,
-        date: date
-      };
-      
-      return saveList_noResponse(uid, metadata, res);
-      
-    } else {
-      //  console.log("request error");
-      return error;
-    }
-  });
-}
-
-function saveList_noResponse(uid, metadata, res) {
-  var listData = {
-    name: metadata.name,
-    prod: metadata.prod,
-    date: metadata.date
-  };
-  var listAtt = {
-    name: metadata.name,
-    date: metadata.date
-  };
-  
-  database.ref('/users/' + uid + "/" + metadata.fantasyName).set(listData);
-  database.ref("/markets/" + metadata.fantasyName + "/prod/").update(listData.prod);
-  database.ref("/markets/" + metadata.fantasyName).update(listAtt);
-  database.ref('/waitList/' + uid).remove();
-  
-  return database.ref('/products/').once('value').then( (snapshot) => {
-    var listProd = metadata.prod;
-    async.forEach(Object.keys(metadata.prod), (i, element) => {
-      var markets = {};
-      if (snapshot.val() !== null){
-        if(snapshot.val()[i]) {
-          if (snapshot.val()[i]["markets"])
-          markets = snapshot.val()[i]["markets"];
+function requestList(link, uid, date) {
+  return new Promise( (resolve, reject) => {
+    request(link, (error, response, html) => {
+      if (!error) {
+        let doc = cheerio.load(html);
+        
+        // NFe not available
+        if (doc('xNome').text() === "") {
+          waitElement = {
+            link: link,
+            time: date
+          };
+          return database.ref('/waitList/' + uid).set(waitElement).then(() => {
+            console.log("requestList - NFe 404! Link on Wait List.");
+            return resolve("NFe 404");
+          })
+        } else {
+          var prodName = [];
+          var prod = {};
+          doc('xProd').each(function (i, element) {
+            prodName[i] = doc(this).text().replace(/\/|&|\*|%/g, " ");
+            prod[prodName[i]] = {
+              // name: doc(this).text()
+            };
+          });
+          doc('cProd').each(function (i, element) {
+            (prod[prodName[i]])["code"] = doc(this).text();
+          });
+          doc('uCom').each(function (i, element) {
+            (prod[prodName[i]])["un"] = doc(this).text();
+          });
+          doc('qCom').each(function (i, element) {
+            (prod[prodName[i]])["qtd"] = doc(this).text();
+          });
+          doc('vUnCom').each(function (i, element) {
+            (prod[prodName[i]])["priceUnit"] = doc(this).text();
+          });
+          
+          metadata = {
+            name: doc('xNome').text(),
+            fantasyName: doc('xFant').text(),
+            prod: prod,
+            date: date
+          };
+          return saveList(uid, metadata).then((result) => {
+            return resolve(result);
+          }, (err) => {
+            return reject(err);
+          });
         }
+      } else { // Error detected
+        console.log("requestList - Error of Request");
+        reject(error);
+        return error;
       }
-      markets[metadata.fantasyName] = true;
-      listProd[i]["markets"] = markets;
     });
-    database.ref("/products/").update(listProd);
-    console.log("saveList_noResponse - NFe found OK!")
-  });
-  
-}
-
-function requestList(link, uid, date, res) {
-  request(link, (error, response, html) => {
-    if (!error) {
-      let doc = cheerio.load(html);
-      
-      // when cant get NFe
-      if(doc('xNome').text()==""){
-        waitElement = {
-          link: link,
-          time: date
-        };
-        return admin.database().ref('/waitList/' + uid).set(waitElement).then(() =>{
-          return res.status(404).send("NFe not found! Link added on Wait List.");
-        })
-      }
-      
-      var prodName = [];
-      var prod = {};
-      doc('xProd').each(function (i, element) {
-        prodName[i] = doc(this).text().replace(/\/|&|\*|%/g, " ");
-        prod[prodName[i]] = {
-          // name: doc(this).text()
-        };
-      });
-      doc('cProd').each(function (i, element) {
-        (prod[prodName[i]])["code"] = doc(this).text();
-      });
-      doc('uCom').each(function (i, element) {
-        (prod[prodName[i]])["un"] = doc(this).text();
-      });
-      doc('qCom').each(function (i, element) {
-        (prod[prodName[i]])["qtd"] = doc(this).text();
-      });
-      doc('vUnCom').each(function (i, element) {
-        (prod[prodName[i]])["priceUnit"] = doc(this).text();
-      });
-      
-      metadata = {
-        name: doc('xNome').text(),
-        fantasyName: doc('xFant').text(),
-        prod: prod,
-        date: date
-      };
-      
-      return saveList(uid, metadata, res);
-      
-    } else {
-      //  console.log("request error");
-      return error;
-    }
+    
   });
 }
 
-function saveList(uid, metadata, res) {
-  var listData = {
-    name: metadata.name,
-    prod: metadata.prod,
-    date: metadata.date
-  };
-  var listAtt = {
-    name: metadata.name,
-    date: metadata.date
-  };
-  
-  database.ref('/users/' + uid + "/" + metadata.fantasyName).set(listData);
-  database.ref("/markets/" + metadata.fantasyName + "/prod/").update(listData.prod);
-  database.ref("/markets/" + metadata.fantasyName).update(listAtt);
-  database.ref('/waitList/' + uid).remove();
-  
-  return database.ref('/products/').once('value').then( (snapshot) => {
-    var listProd = metadata.prod;
-    async.forEach(Object.keys(metadata.prod), (i, element) => {
-      var markets = {};
-      if (snapshot.val() !== null){
-        if(snapshot.val()[i]) {
-          if (snapshot.val()[i]["markets"])
-          markets = snapshot.val()[i]["markets"];
+function saveList(uid, metadata) {
+  return new Promise((resolve, reject) => {
+    var listData = {
+      name: metadata.name,
+      prod: metadata.prod,
+      date: metadata.date
+    };
+    var listAtt = {
+      name: metadata.name,
+      date: metadata.date
+    };
+    
+    database.ref('/users/' + uid + "/" + metadata.fantasyName).set(listData);
+    database.ref("/markets/" + metadata.fantasyName + "/prod/").update(listData.prod);
+    database.ref("/markets/" + metadata.fantasyName).update(listAtt);
+    database.ref('/waitList/' + uid).remove();
+    
+    return database.ref('/products/').once('value').then( (snapshot) => {
+      var listProd = metadata.prod;
+      async.forEach(Object.keys(metadata.prod), (i, element) => {
+        var markets = {};
+        if (snapshot.val() !== null){
+          if(snapshot.val()[i]) {
+            if (snapshot.val()[i]["markets"])
+            markets = snapshot.val()[i]["markets"];
+          }
         }
-      }
-      markets[metadata.fantasyName] = true;
-      listProd[i]["markets"] = markets;
+        markets[metadata.fantasyName] = true;
+        listProd[i]["markets"] = markets;
+      });
+      return database.ref("/products/").update(listProd);
+    }).then(() => {
+      console.log("saveList - NFe OK!");
+      return resolve("OK");
     });
-    database.ref("/products/").update(listProd);
-    return res.status(200).send("OK");
   });
-  
 }
 //Teste Local
 //http://localhost:5000/anota-backend/us-central1/addList?uid=12345&link=http://nfce.sefaz.pe.gov.br/nfce-web/consultarNFCe?chNFe=26180421920821000116650050000111779051519177&nVersao=100&tpAmb=1&dhEmi=323031382D30342D32345431343A33343A31342D30333A3030&vNF=68.23&vICMS=3.17&digVal=&cIdToken=000001&cHashQRCode=BFFC6C762A27D77FF8C8B8FDB6B83C6296F6014F
