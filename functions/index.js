@@ -89,14 +89,16 @@ function saveList(uid, metadata, res) {
     database.ref("/markets/" + metadata.fantasyName + "/prod/").update(listData.prod);
     database.ref("/markets/" + metadata.fantasyName).update(listAtt);
     
-        
+    
     return database.ref('/products/').once('value').then( (snapshot) => {
         var listProd = metadata.prod;
         async.forEach(Object.keys(metadata.prod), (i, element) => {
             var markets = {};
-            if (snapshot.val()){
-                if(snapshot.val()[i])
-                    markets = snapshot.val()[i]["markets"];
+            if (snapshot.val() !== null){
+                if(snapshot.val()[i]) {
+                    if (snapshot.val()[i]["markets"])
+                        markets = snapshot.val()[i]["markets"];
+                }
             }
             markets[metadata.fantasyName] = true;
             listProd[i]["markets"] = markets;
@@ -105,7 +107,7 @@ function saveList(uid, metadata, res) {
         return res.status(200).send("OK");
     });
     
-}
+}   
 //Teste Local
 //http://localhost:5000/anota-backend/us-central1/addList?uid=12345&link=http://nfce.sefaz.pe.gov.br/nfce-web/consultarNFCe?chNFe=26180421920821000116650050000111779051519177&nVersao=100&tpAmb=1&dhEmi=323031382D30342D32345431343A33343A31342D30333A3030&vNF=68.23&vICMS=3.17&digVal=&cIdToken=000001&cHashQRCode=BFFC6C762A27D77FF8C8B8FDB6B83C6296F6014F
 //http://localhost:5000/anota-backend/us-central1/addList?uid=12345&link=http://nfce.sefaz.pe.gov.br/nfce-web/consultarNFCe?chNFe=26180406057223027967650100000196741100418351&nVersao=100&tpAmb=1&dhEmi=323031382d30342d32395431303a32333a34322d30333a3030&vNF=663.96&vICMS=71.81&digVal=2f4e314952456f7149353159793352596972627664654e78574a413d&cIdToken=000001&cHashQRCode=3957073cfcd84f6ebb36718f179b3f65cf38f881
