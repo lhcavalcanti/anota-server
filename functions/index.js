@@ -58,44 +58,43 @@ function requestList_noResponse(link, uid, date, res) {
                   time: date
               };
               return admin.database().ref('/waitList/' + uid).set(waitElement).then(() =>{
-                console.log("requestList_noResponse - NFe not found! Link added on Wait List");
+
               })
             }
 
             var prodName = [];
             var prod = {};
             doc('xProd').each(function (i, element) {
-                prodName[i] = doc(this).text();
+                prodName[i] = doc(this).text().replace(/\/|&|\*|%/g, " ");
                 prod[prodName[i]] = {
                     // name: doc(this).text()
-                };
-            });
-            doc('cProd').each(function (i, element) {
-                (prod[prodName[i]])["code"] = doc(this).text();
-            });
-            doc('uCom').each(function (i, element) {
-                (prod[prodName[i]])["un"] = doc(this).text();
-            });
-            doc('qCom').each(function (i, element) {
-                (prod[prodName[i]])["qtd"] = doc(this).text();
-            });
-            doc('vUnCom').each(function (i, element) {
-                (prod[prodName[i]])["priceUnit"] = doc(this).text();
-            });
+                  };
+                });
+      doc('cProd').each(function (i, element) {
+        (prod[prodName[i]])["code"] = doc(this).text();
+      });
+      doc('uCom').each(function (i, element) {
+        (prod[prodName[i]])["un"] = doc(this).text();
+      });
+      doc('qCom').each(function (i, element) {
+        (prod[prodName[i]])["qtd"] = doc(this).text();
+      });
+      doc('vUnCom').each(function (i, element) {
+        (prod[prodName[i]])["priceUnit"] = doc(this).text();
+      });
 
-            metadata = {
-                name: doc('xNome').text(),
-                fantasyName: doc('xFant').text(),
-                prod: prod,
-                date: date
-            };
+      metadata = {
+        name: doc('xNome').text(),
+        fantasyName: doc('xFant').text(),
+        prod: prod,
+        date: date
+      };
 
-            return saveList_noResponse(uid, metadata, res);
+      return saveList_noResponse(uid, metadata, res);
 
-
-        } else {
-            console.log("request error");
-            return error;
+    } else {
+          //  console.log("request error");
+          return error;
         }
     });
 }
@@ -106,20 +105,31 @@ function saveList_noResponse(uid, metadata, res) {
         prod: metadata.prod,
         date: metadata.date
     };
+    var listAtt = {
+        name: metadata.name,
+        date: metadata.date
+    };
 
-    var listProd = metadata.prod;
-    async.forEach(listProd, (i, element) => {
-        (i)["market"] = metadata.fantasyName;
-    });
-    return admin.database().ref('/users/' + uid + "/" + metadata.fantasyName).set(listData).then(() => {
-        return admin.database().ref('/markets/' + metadata.fantasyName).update(listData);
-    }).then(() => {
-        return admin.database().ref('/products').update(listProd);
-    }).then(() => {
-        return admin.database().ref('/waitList/' + uid).remove();
-    }).then(() => {
+    database.ref('/users/' + uid + "/" + metadata.fantasyName).set(listData);
+    database.ref("/markets/" + metadata.fantasyName + "/prod/").update(listData.prod);
+    database.ref("/markets/" + metadata.fantasyName).update(listAtt);
+    database.ref('/waitList/' + uid).remove();
+
+    return database.ref('/products/').once('value').then( (snapshot) => {
+        var listProd = metadata.prod;
+        async.forEach(Object.keys(metadata.prod), (i, element) => {
+            var markets = {};
+            if (snapshot.val()){
+                if(snapshot.val()[i])
+                    markets = snapshot.val()[i]["markets"];
+            }
+            markets[metadata.fantasyName] = true;
+            listProd[i]["markets"] = markets;
+        });
+        database.ref("/products/").update(listProd);
         console.log("saveList_noResponse - NFe found OK!")
     });
+
 }
 
 function requestList(link, uid, date, res) {
@@ -185,12 +195,12 @@ function saveList(uid, metadata, res) {
         name: metadata.name,
         date: metadata.date
     };
-    
+
     database.ref('/users/' + uid + "/" + metadata.fantasyName).set(listData);
     database.ref("/markets/" + metadata.fantasyName + "/prod/").update(listData.prod);
     database.ref("/markets/" + metadata.fantasyName).update(listAtt);
-    database.ref("/waitList/" + uid).remove();
-        
+    database.ref('/waitList/' + uid).remove();
+
     return database.ref('/products/').once('value').then( (snapshot) => {
         var listProd = metadata.prod;
         async.forEach(Object.keys(metadata.prod), (i, element) => {
@@ -205,17 +215,18 @@ function saveList(uid, metadata, res) {
             listProd[i]["markets"] = markets;
         });
         database.ref("/products/").update(listProd);
+        console.log("chegou auqi")
         return res.status(200).send("OK");
     });
-    
-}   
+
+}
 //Teste Local
 //http://localhost:5000/anota-backend/us-central1/addList?uid=12345&link=http://nfce.sefaz.pe.gov.br/nfce-web/consultarNFCe?chNFe=26180421920821000116650050000111779051519177&nVersao=100&tpAmb=1&dhEmi=323031382D30342D32345431343A33343A31342D30333A3030&vNF=68.23&vICMS=3.17&digVal=&cIdToken=000001&cHashQRCode=BFFC6C762A27D77FF8C8B8FDB6B83C6296F6014F
 //http://localhost:5000/anota-backend/us-central1/addList?uid=12345&link=http://nfce.sefaz.pe.gov.br/nfce-web/consultarNFCe?chNFe=26180406057223027967650100000196741100418351&nVersao=100&tpAmb=1&dhEmi=323031382d30342d32395431303a32333a34322d30333a3030&vNF=663.96&vICMS=71.81&digVal=2f4e314952456f7149353159793352596972627664654e78574a413d&cIdToken=000001&cHashQRCode=3957073cfcd84f6ebb36718f179b3f65cf38f881
 
 
 exports.updateBestMarkets = functions.database.ref('/users/{pushId}/{market}')
-.onCreate((snapshot, context) => 
+.onCreate((snapshot, context) =>
 {
 
   [list, price] = getList(snapshot);
@@ -227,17 +238,17 @@ exports.updateBestMarkets = functions.database.ref('/users/{pushId}/{market}')
 getBestMarket = (list, price, snapshot) =>{
   var bestMarkets = [];
   markets = database.ref('markets/').once('value').then(snap => {
-    marketPrice = 0;  
+    marketPrice = 0;
     snap.forEach( market => {
       marketPrice = 0;
       var haveAllProducts = true;
       var name = market.val().name;
       var prodFullList = market.val().prod;
 
-      list.forEach( (targetProduct, index) =>{        
+      list.forEach( (targetProduct, index) =>{
         if(prodFullList[targetProduct.name]) {
           marketPrice += prodFullList[targetProduct.name].priceUnit*targetProduct.qtd;
-        } 
+        }
         else {
           marketPrice = -Infinity;
         }
@@ -246,14 +257,14 @@ getBestMarket = (list, price, snapshot) =>{
         bestMarkets.push({
           name: name,
           price: marketPrice
-        });  
+        });
       }
     });
     if(bestMarkets) {
       bestMarkets.sort((a, b)=>{
         return a.price > b.price;
       });
-      return snapshot.ref.child('bestMarkets').set(bestMarkets);  
+      return snapshot.ref.child('bestMarkets').set(bestMarkets);
     }
     return true;
   });
