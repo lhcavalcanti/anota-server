@@ -17,11 +17,19 @@ const async = require('async');
 var database = admin.database();
 
 
+exports.getUserLists = functions.https.onRequest((req, res) => {
+  const uid = req.query.uid;
+
+  return database.ref('/users/' + uid).once('value').then((snapshot) => {
+    return res.status(200).json(snapshot.val());
+  });
+});
+
 exports.getBestMarkets = functions.https.onRequest((req, res) => {
   const uid = req.query.uid;
   
   return database.ref('/users/' + uid).once('value').then( (snapshot) => {
-    return res.status(200).send(snapshot.val().bestMarkets);
+    return res.status(200).json(snapshot.val().bestMarkets);
   });
 });
 
