@@ -162,70 +162,82 @@ function saveList(uid, metadata) {
 
 
 exports.updateBestMarkets = functions.database.ref('/users/{pushId}/{market}')
-.onCreate((snapshot, context) =>
+.onCreate((snapshot, context) => 
 {
-  
+
   [list, price] = getList(snapshot);
   getBestMarket(list, price, snapshot);
+
   return true;
-  
+
 });
 
+
 getBestMarket = (list, price, snapshot) =>{
-  var bestMarkets = [];
+  var bestMarkets = [];  
   markets = database.ref('markets/').once('value').then(snap => {
-    marketPrice = 0;
+
+    marketPrice = 0;  
     snap.forEach( market => {
+      
       marketPrice = 0;
       var haveAllProducts = true;
       var name = market.val().name;
       var prodFullList = market.val().prod;
-      
-      list.forEach( (targetProduct, index) =>{
-        if(prodFullList[targetProduct.name]) {
+
+      list.forEach( (targetProduct, index) =>{        
+        if(prodFullList[targetProduct.name])
+        {
           marketPrice += prodFullList[targetProduct.name].priceUnit*targetProduct.qtd;
-        }
-        else {
+        } 
+        else{
           marketPrice = -Infinity;
         }
       });
-      if(marketPrice >= 0) {
+
+      if(marketPrice >= 0)
+      {
         bestMarkets.push({
           name: name,
           price: marketPrice
-        });
+        });  
       }
     });
-    if(bestMarkets) {
+
+    if(bestMarkets)
+    {
+      
       bestMarkets.sort((a, b)=>{
         return a.price > b.price;
       });
-      return snapshot.ref.child('bestMarkets').set(bestMarkets);
+
+      return snapshot.ref.child('bestMarkets').set(bestMarkets);  
     }
+
     return true;
   });
-}
 
+  return markets;
+};
 
-let getList = (snapshot) => {
+let getList = (snapshot) =>{
   var prod = snapshot.val().prod;
   var list = [];
   var price = 0.0;
-  if (prod) 
+  if (prod)
   {
-    for(var product in prod) 
+    for(var product in prod)
     {
-      list.push(
-        {
-          name: product,
-          qtd: parseFloat(prod[product].qtd)
-        });
-        
-        itemPrice = parseFloat(prod[product].priceUnit) * parseFloat(prod[product].qtd);
-        price += itemPrice
-      }
+      list.push({
+        name: product,
+        qtd: parseFloat(prod[product].qtd)
+      });
+
+      itemPrice = parseFloat(prod[product].priceUnit)*parseFloat(prod[product].qtd);
+      price += itemPrice;
     }
-    
-    return [list,price]
-  };
+  }
   
+  return [list,price];
+};
+
