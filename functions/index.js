@@ -64,7 +64,7 @@ function requestList(link, uid, date) {
     request(link, (error, response, html) => {
       if (!error) {
         let doc = cheerio.load(html);
-        
+  
         // NFe not available
         if (doc('xNome').text() === "") {
           waitElement = {
@@ -97,12 +97,27 @@ function requestList(link, uid, date) {
             (prod[prodName[i]])["priceUnit"] = doc(this).text();
           });
           
+          var address = {
+            street: doc('xLgr').text(),
+            num: doc('nro').text(),
+            neighborhood: doc('xBairro').text(),
+            city: doc('xMun').text(),
+            // cod_city: doc('cMun').text(),
+            uf: doc('UF').text(),
+            cep: doc('CEP').text(),
+            // cod_country: doc('cPais').text(),
+            country: doc('xPais').text(),
+            // phone: doc('fone').text(),
+          };
+
           metadata = {
             name: doc('xNome').text(),
-            fantasyName: doc('xFant').text(),
+            cnpj: doc('CNPJ').text(),
+            address: address,
             prod: prod,
-            date: date
+            date: doc('dhRecbto').text()
           };
+
           return saveList(uid, metadata).then((result) => {
             return resolve(result);
           }, (err) => {
@@ -121,33 +136,34 @@ function requestList(link, uid, date) {
 
 function saveList(uid, metadata) {
   return new Promise((resolve, reject) => {
-    var listData = {
+    var userListData = {
       name: metadata.name,
       prod: metadata.prod,
+      address: metadata.address,
       date: metadata.date
     };
-    var listAtt = {
+    var marketInfo = {
       name: metadata.name,
+      address: metadata.address,
       date: metadata.date
     };
     
-    database.ref('/users/' + uid + "/" + metadata.fantasyName).set(listData);
-    database.ref("/markets/" + metadata.fantasyName + "/prod/").update(listData.prod);
-    database.ref("/markets/" + metadata.fantasyName).update(listAtt);
+    database.ref('/users/' + uid + "/" + metadata.cnpj).set(userListData);
+    database.ref("/markets/" + metadata.cnpj + "/prod/").update(metadata.prod);
+    database.ref("/markets/" + metadata.cnpj).update(marketInfo);
     database.ref('/waitList/' + uid).remove();
     
     return database.ref('/products/').once('value').then( (snapshot) => {
-      var listProd = metadata.prod;
+      var listProd = {};
       async.forEach(Object.keys(metadata.prod), (i, element) => {
         var markets = {};
         if (snapshot.val() !== null){
           if(snapshot.val()[i]) {
-            if (snapshot.val()[i]["markets"])
-            markets = snapshot.val()[i]["markets"];
+            markets = snapshot.val()[i];
           }
         }
-        markets[metadata.fantasyName] = true;
-        listProd[i]["markets"] = markets;
+        markets[metadata.cnpj] = true;
+        listProd[i] = markets;
       });
       return database.ref("/products/").update(listProd);
     }).then(() => {
