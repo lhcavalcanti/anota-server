@@ -189,8 +189,13 @@ exports.updateBestMarkets = functions.database.ref('/users/{pushId}/{market}')
 });
 
 
+objNotEmpty = (obj) =>{
+  for (var i in obj) return true;
+  return false;
+}
+
 getBestMarket = (list, price, snapshot) =>{
-  var bestMarkets = [];  
+  var bestMarkets = {};  
   markets = database.ref('markets/').once('value').then(snap => {
 
     marketPrice = 0;  
@@ -198,7 +203,7 @@ getBestMarket = (list, price, snapshot) =>{
       
       marketPrice = 0;
       var haveAllProducts = true;
-      var name = market.val().name;
+      var name = market.key;
       var prodFullList = market.val().prod;
 
       list.forEach( (targetProduct, index) =>{        
@@ -213,20 +218,12 @@ getBestMarket = (list, price, snapshot) =>{
 
       if(marketPrice >= 0)
       {
-        bestMarkets.push({
-          name: name,
-          price: marketPrice
-        });  
+        bestMarkets[name] = {price: marketPrice, gps: -1};  
       }
     });
 
-    if(bestMarkets)
+    if(objNotEmpty(bestMarkets))
     {
-      
-      bestMarkets.sort((a, b)=>{
-        return a.price > b.price;
-      });
-
       return snapshot.ref.child('bestMarkets').set(bestMarkets);  
     }
 
