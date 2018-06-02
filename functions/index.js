@@ -72,7 +72,7 @@ function requestList(link, uid, date) {
             link: link,
             time: date
           };
-          return database.ref('/waitList/' + link.split('=')[1]).set(waitElement).then(() => {
+          return database.ref('/waitList/' + link.split('=')[1].split('&')[0]).set(waitElement).then(() => {
             console.log("requestList - NFe 404! Link on Wait List.");
             return resolve("NFe 404");
           })
@@ -117,7 +117,7 @@ function requestList(link, uid, date) {
             address: address,
             prod: prod,
             date: doc('dhRecbto').text(),
-            NFeCode: link.split('=')[1]
+            link: link
           };
 
           return saveList(uid, metadata).then((result) => {
@@ -153,7 +153,8 @@ function saveList(uid, metadata) {
     database.ref('/users/' + uid + "/" + metadata.cnpj).set(userListData);
     database.ref("/markets/" + metadata.cnpj + "/prod/").update(metadata.prod);
     database.ref("/markets/" + metadata.cnpj).update(marketInfo);
-    database.ref('/waitList/' + metadata.NFeCode).remove();
+    console.log("NFeCode: " +  metadata.link.split('=')[1].split('&')[0])
+    database.ref('/waitList/' + metadata.link.split('=')[1].split('&')[0]).remove();
 
     return database.ref('/products/').once('value').then( (snapshot) => {
       var listProd = {};
