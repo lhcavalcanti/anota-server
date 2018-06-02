@@ -16,7 +16,34 @@ const async = require('async');
 
 var database = admin.database();
 
-exports.getLists = functions.https.onRequest((req, res) => {
+
+exports.addList = functions.https.onRequest((req, res) => {
+  // Grab the text parameter.
+  const uid = req.query.uid;
+  const link = req.query.link;
+  var now = new Date();
+  return requestList(link, uid, now.toJSON()).then((result) => {
+    return res.status(200).send(result);
+  }, (err) => {
+    return res.status(500).send(err);
+  });
+});
+
+exports.retryList = functions.https.onRequest((req, res) => {
+  var wl = database.ref('/waitList/');
+  return wl.once('value').then((snapshot) => {
+    snapshot.forEach(elem => {
+      // console.log(elem.key + " uid: " + elem.val().uid + " link " + elem.val().link + " and time: " + elem.val().time);
+      requestList(elem.val().link, elem.val().uid, elem.val().time);
+    });
+    return true;
+  }).then(() => {
+    return res.status(200).send('Retry Wait List\n');
+  });
+});
+
+
+exports.getUserLists = functions.https.onRequest((req, res) => {
   const uid = req.query.uid;
   return database.ref('/users/' + uid).once('value').then((snapshot) => {
     return res.status(200).json(snapshot.val());
@@ -45,32 +72,6 @@ exports.setUserListName = functions.https.onRequest((req, res) => {
     return res.status(500).send("ERROR");
   });
 });
-
-exports.addList = functions.https.onRequest((req, res) => {
-  // Grab the text parameter.
-  const uid = req.query.uid;
-  const link = req.query.link;
-  var now = new Date();
-  return requestList(link, uid, now.toJSON()).then((result) => {
-      return res.status(200).send(result);
-  }, (err) => {
-      return res.status(500).send(err);
-  });
-});
-
-exports.retryList = functions.https.onRequest((req, res) => {
-  var wl = database.ref('/waitList/');
-   return wl.once('value').then((snapshot)=>{
-    snapshot.forEach(elem => {
-      // console.log(elem.key + " uid: " + elem.val().uid + " link " + elem.val().link + " and time: " + elem.val().time);
-      requestList(elem.val().link, elem.val().uid, elem.val().time);
-    });
-    return true;
-  }).then(() =>{
-    return res.status(200).send('Retry Wait List\n');
-  });
-});
-
 
 function requestList(link, uid, date) {
   return new Promise( (resolve, reject) => {
