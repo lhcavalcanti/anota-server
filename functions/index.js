@@ -170,7 +170,7 @@ function saveList(uid, metadata) {
       return database.ref("/products/").update(listProd);
     }).then(() => {
       console.log("saveList - NFe OK!");
-      return resolve("OK");
+      return resolve(userListData);
     });
   });
 }
