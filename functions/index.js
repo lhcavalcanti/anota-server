@@ -16,12 +16,33 @@ const async = require('async');
 
 var database = admin.database();
 
-
-exports.getUserLists = functions.https.onRequest((req, res) => {
+exports.getLists = functions.https.onRequest((req, res) => {
   const uid = req.query.uid;
-
   return database.ref('/users/' + uid).once('value').then((snapshot) => {
     return res.status(200).json(snapshot.val());
+  });
+});
+
+exports.getUserList = functions.https.onRequest((req, res) => {
+  const uid = req.query.uid;
+  const lid = req.query.lid;
+  return database.ref('/users/' + uid + "/" + lid).once('value').then((snapshot) => {
+    return res.status(200).json(snapshot.val());
+  });
+});
+
+exports.setUserListName = functions.https.onRequest((req, res) => {
+  const uid = req.query.uid;
+  const lid = req.query.lid;
+  const lname = req.query.lname;
+  return database.ref('/users/' + uid + "/" + lid).once('value').then((snapshot) => {
+    var userListData = snapshot.val();
+    userListData["name"] = lname;
+    return database.ref('/users/' + uid + "/" + lid).set(userListData);
+  }).then(() => {
+    return res.status(200).send("OK");
+  }).catch(() => {
+    return res.status(500).send("ERROR");
   });
 });
 
@@ -56,7 +77,7 @@ function requestList(link, uid, date) {
     request(link, (error, response, html) => {
       if (!error) {
         let doc = cheerio.load(html);
-
+        var lid = link.split('=')[1].split('&')[0];
         // NFe not available
         if (doc('xNome').text() === "") {
           waitElement = {
@@ -64,9 +85,9 @@ function requestList(link, uid, date) {
             link: link,
             time: date
           };
-          return database.ref('/waitList/' + link.split('=')[1].split('&')[0]).set(waitElement).then(() => {
+          return database.ref('/waitList/' + lid).set(waitElement).then(() => {
             console.log("requestList - NFe 404! Link on Wait List.");
-            return resolve("NFe 404");
+            return resolve("NFe 404 - " + uid + " - "+ lid);
           })
         } else {
           var prodName = [];
@@ -74,7 +95,7 @@ function requestList(link, uid, date) {
           doc('xProd').each(function (i, element) {
             prodName[i] = doc(this).text().replace(/\/|&|\*|%/g, " ");
             prod[prodName[i]] = {
-              // name: doc(this).text()
+              //name: doc(this).text()
             };
           });
           doc('cProd').each(function (i, element) {
@@ -112,7 +133,7 @@ function requestList(link, uid, date) {
             link: link
           };
 
-          return saveList(uid, metadata).then((result) => {
+          return saveList(uid, lid, metadata).then((result) => {
             return resolve(result);
           }, (err) => {
             return reject(err);
@@ -128,9 +149,10 @@ function requestList(link, uid, date) {
   });
 }
 
-function saveList(uid, metadata) {
+function saveList(uid, lid, metadata) {
   return new Promise((resolve, reject) => {
     var userListData = {
+      cnpj: metadata.cnpj,
       name: metadata.name,
       prod: metadata.prod,
       address: metadata.address,
@@ -142,10 +164,10 @@ function saveList(uid, metadata) {
       date: metadata.date
     };
 
-    database.ref('/users/' + uid + "/" + metadata.cnpj).set(userListData);
+    database.ref('/users/' + uid + "/" + lid).set(userListData);
     database.ref("/markets/" + metadata.cnpj + "/prod/").update(metadata.prod);
     database.ref("/markets/" + metadata.cnpj).update(marketInfo);
-    database.ref('/waitList/' + metadata.link.split('=')[1].split('&')[0]).remove();
+    database.ref('/waitList/' + lid).remove();
 
     return database.ref('/products/').once('value').then( (snapshot) => {
       var listProd = {};
@@ -162,6 +184,7 @@ function saveList(uid, metadata) {
       return database.ref("/products/").update(listProd);
     }).then(() => {
       console.log("saveList - NFe OK!");
+      userListData["lid"] = lid;
       return resolve(userListData);
     });
   });
