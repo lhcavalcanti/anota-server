@@ -27,7 +27,7 @@ exports.getUserLists = functions.https.onRequest((req, res) => {
 
 exports.getBestMarkets = functions.https.onRequest((req, res) => {
   const uid = req.query.uid;
-  
+
   return database.ref('/users/' + uid).once('value').then( (snapshot) => {
     return res.status(200).json(snapshot.val().bestMarkets);
   });
@@ -47,11 +47,10 @@ exports.addList = functions.https.onRequest((req, res) => {
 
 exports.retryList = functions.https.onRequest((req, res) => {
   var wl = database.ref('/waitList/');
-  const waitElements = wl.orderByChild('time');
-   return waitElements.once('value').then((snapshot)=>{
+   return wl.once('value').then((snapshot)=>{
     snapshot.forEach(elem => {
-      // console.log(elem.key + " link " + elem.val().link + " and time: " + elem.val().time);
-      requestList(elem.val().link, elem.key, elem.val().time);
+      // console.log(elem.key + " uid: " + elem.val().uid + " link " + elem.val().link + " and time: " + elem.val().time);
+      requestList(elem.val().link, elem.val().uid, elem.val().time);
     });
     return true;
   }).then(() =>{
@@ -59,19 +58,21 @@ exports.retryList = functions.https.onRequest((req, res) => {
   });
 });
 
+
 function requestList(link, uid, date) {
   return new Promise( (resolve, reject) => {
     request(link, (error, response, html) => {
       if (!error) {
         let doc = cheerio.load(html);
-  
+
         // NFe not available
         if (doc('xNome').text() === "") {
           waitElement = {
+            uid: uid,
             link: link,
             time: date
           };
-          return database.ref('/waitList/' + uid).set(waitElement).then(() => {
+          return database.ref('/waitList/' + link.split('=')[1]).set(waitElement).then(() => {
             console.log("requestList - NFe 404! Link on Wait List.");
             return resolve("NFe 404");
           })
@@ -96,7 +97,7 @@ function requestList(link, uid, date) {
           doc('vUnCom').each(function (i, element) {
             (prod[prodName[i]])["priceUnit"] = doc(this).text();
           });
-          
+
           var address = {
             street: doc('xLgr').text(),
             num: doc('nro').text(),
@@ -115,7 +116,8 @@ function requestList(link, uid, date) {
             cnpj: doc('CNPJ').text(),
             address: address,
             prod: prod,
-            date: doc('dhRecbto').text()
+            date: doc('dhRecbto').text(),
+            NFeCode: link.split('=')[1]
           };
 
           return saveList(uid, metadata).then((result) => {
@@ -130,7 +132,7 @@ function requestList(link, uid, date) {
         return error;
       }
     });
-    
+
   });
 }
 
@@ -147,12 +149,12 @@ function saveList(uid, metadata) {
       address: metadata.address,
       date: metadata.date
     };
-    
+
     database.ref('/users/' + uid + "/" + metadata.cnpj).set(userListData);
     database.ref("/markets/" + metadata.cnpj + "/prod/").update(metadata.prod);
     database.ref("/markets/" + metadata.cnpj).update(marketInfo);
-    database.ref('/waitList/' + uid).remove();
-    
+    database.ref('/waitList/' + metadata.NFeCode).remove();
+
     return database.ref('/products/').once('value').then( (snapshot) => {
       var listProd = {};
       async.forEach(Object.keys(metadata.prod), (i, element) => {
@@ -178,7 +180,7 @@ function saveList(uid, metadata) {
 
 
 exports.updateBestMarkets = functions.database.ref('/users/{pushId}/{market}')
-.onCreate((snapshot, context) => 
+.onCreate((snapshot, context) =>
 {
 
   [list, price] = getList(snapshot);
@@ -195,22 +197,22 @@ objNotEmpty = (obj) =>{
 }
 
 getBestMarket = (list, price, snapshot) =>{
-  var bestMarkets = {};  
+  var bestMarkets = {};
   markets = database.ref('markets/').once('value').then(snap => {
 
-    marketPrice = 0;  
+    marketPrice = 0;
     snap.forEach( market => {
-      
+
       marketPrice = 0;
       var haveAllProducts = true;
       var name = market.key;
       var prodFullList = market.val().prod;
 
-      list.forEach( (targetProduct, index) =>{        
+      list.forEach( (targetProduct, index) =>{
         if(prodFullList[targetProduct.name])
         {
           marketPrice += prodFullList[targetProduct.name].priceUnit*targetProduct.qtd;
-        } 
+        }
         else{
           marketPrice = -Infinity;
         }
@@ -218,13 +220,13 @@ getBestMarket = (list, price, snapshot) =>{
 
       if(marketPrice >= 0)
       {
-        bestMarkets[name] = {price: marketPrice, gps: -1};  
+        bestMarkets[name] = {price: marketPrice, gps: -1};
       }
     });
 
     if(objNotEmpty(bestMarkets))
     {
-      return snapshot.ref.child('bestMarkets').set(bestMarkets);  
+      return snapshot.ref.child('bestMarkets').set(bestMarkets);
     }
 
     return true;
@@ -250,7 +252,6 @@ let getList = (snapshot) =>{
       price += itemPrice;
     }
   }
-  
+
   return [list,price];
 };
-
