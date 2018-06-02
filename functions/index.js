@@ -25,14 +25,6 @@ exports.getUserLists = functions.https.onRequest((req, res) => {
   });
 });
 
-exports.getBestMarkets = functions.https.onRequest((req, res) => {
-  const uid = req.query.uid;
-
-  return database.ref('/users/' + uid).once('value').then( (snapshot) => {
-    return res.status(200).json(snapshot.val().bestMarkets);
-  });
-});
-
 exports.addList = functions.https.onRequest((req, res) => {
   // Grab the text parameter.
   const uid = req.query.uid;
