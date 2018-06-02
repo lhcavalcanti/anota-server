@@ -153,7 +153,6 @@ function saveList(uid, metadata) {
     database.ref('/users/' + uid + "/" + metadata.cnpj).set(userListData);
     database.ref("/markets/" + metadata.cnpj + "/prod/").update(metadata.prod);
     database.ref("/markets/" + metadata.cnpj).update(marketInfo);
-    console.log("NFeCode: " +  metadata.link.split('=')[1].split('&')[0])
     database.ref('/waitList/' + metadata.link.split('=')[1].split('&')[0]).remove();
 
     return database.ref('/products/').once('value').then( (snapshot) => {
