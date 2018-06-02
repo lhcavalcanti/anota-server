@@ -46,6 +46,7 @@ exports.retryList = functions.https.onRequest((req, res) => {
 exports.getUserLists = functions.https.onRequest((req, res) => {
   const uid = req.query.uid;
   return database.ref('/users/' + uid).once('value').then((snapshot) => {
+    console.log("getUserLists - OK");
     return res.status(200).json(snapshot.val());
   });
 });
@@ -54,6 +55,7 @@ exports.getUserList = functions.https.onRequest((req, res) => {
   const uid = req.query.uid;
   const lid = req.query.lid;
   return database.ref('/users/' + uid + "/" + lid).once('value').then((snapshot) => {
+    console.log("getUserList - OK");
     return res.status(200).json(snapshot.val());
   });
 });
@@ -67,6 +69,7 @@ exports.setUserListName = functions.https.onRequest((req, res) => {
     userListData["name"] = lname;
     return database.ref('/users/' + uid + "/" + lid).set(userListData);
   }).then(() => {
+    console.log("setUserListName - OK");
     return res.status(200).send("OK");
   }).catch(() => {
     return res.status(500).send("ERROR");
