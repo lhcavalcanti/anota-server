@@ -43,14 +43,19 @@ exports.retryList = functions.https.onRequest((req, res) => {
 });
 
 
-exports.getUserLists = functions.https.onRequest((req, res) => {
+exports.getUser = functions.https.onRequest((req, res) => {
   const uid = req.query.uid;
   return database.ref('/users/' + uid).once('value').then((snapshot) => {
-    console.log("getUserLists - OK");
-    return res.status(200).json(snapshot.val());
+    if (snapshot.val() !== null) {
+      console.log("getUser - OK");
+      return res.status(200).json(snapshot.val());
+    } else {
+      console.log("getUser - 404");
+      return res.status(404).send("User not Found");
+    }
   }).catch(() => {
-    console.log("getUserLists - 404");
-    return res.status(404).send("User Lists - 404");
+    console.log("getUser - ERROR");
+    return res.status(500).send("User Lists - ERROR");
   });
 });
 
@@ -58,11 +63,16 @@ exports.getUserList = functions.https.onRequest((req, res) => {
   const uid = req.query.uid;
   const lid = req.query.lid;
   return database.ref('/users/' + uid + "/" + lid).once('value').then((snapshot) => {
-    console.log("getUserList - OK");
-    return res.status(200).json(snapshot.val());
+    if (snapshot.val() !== null){
+      console.log("getUserList - OK");
+      return res.status(200).json(snapshot.val());
+    } else {
+      console.log("getUserList - 404");
+      return res.status(404).send("List not Found");  
+    }
   }).catch(() => {
-    console.log("getUserList - 404");
-    return res.status(404).send("User List - 404");
+    console.log("getUserList - ERROR");
+    return res.status(500).send("ERROR");
   });
 });
 
@@ -72,11 +82,15 @@ exports.setUserListName = functions.https.onRequest((req, res) => {
   const lname = req.query.lname;
   return database.ref('/users/' + uid + "/" + lid).once('value').then((snapshot) => {
     var userListData = snapshot.val();
-    userListData["name"] = lname;
-    return database.ref('/users/' + uid + "/" + lid).set(userListData);
-  }).then(() => {
-    console.log("setUserListName - OK");
-    return res.status(200).send("OK");
+    if (snapshot.val() !== null){
+      userListData["name"] = lname;
+      database.ref('/users/' + uid + "/" + lid).set(userListData);
+      console.log("setUserListName - OK");
+      return res.status(200).send("OK");
+    } else{
+      console.log("setUserListName - 404");
+      return res.status(404).send("List not Found");
+    }
   }).catch(() => {
     console.log("setUserListName - ERROR");
     return res.status(500).send("ERROR");
@@ -86,12 +100,9 @@ exports.setUserListName = functions.https.onRequest((req, res) => {
 
 exports.updateBestMarkets = functions.database.ref('/users/{pushId}/{market}')
   .onCreate((snapshot, context) => {
-
     [list, price] = getList(snapshot);
     getBestMarket(list, price, snapshot);
-
     return true;
-
   });
 
 
