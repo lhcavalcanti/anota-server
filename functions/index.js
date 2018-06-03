@@ -48,6 +48,9 @@ exports.getUserLists = functions.https.onRequest((req, res) => {
   return database.ref('/users/' + uid).once('value').then((snapshot) => {
     console.log("getUserLists - OK");
     return res.status(200).json(snapshot.val());
+  }).catch(() => {
+    console.log("getUserLists - 404");
+    return res.status(404).send("User Lists - 404");
   });
 });
 
@@ -57,6 +60,9 @@ exports.getUserList = functions.https.onRequest((req, res) => {
   return database.ref('/users/' + uid + "/" + lid).once('value').then((snapshot) => {
     console.log("getUserList - OK");
     return res.status(200).json(snapshot.val());
+  }).catch(() => {
+    console.log("getUserList - 404");
+    return res.status(404).send("User List - 404");
   });
 });
 
@@ -72,6 +78,7 @@ exports.setUserListName = functions.https.onRequest((req, res) => {
     console.log("setUserListName - OK");
     return res.status(200).send("OK");
   }).catch(() => {
+    console.log("setUserListName - ERROR");
     return res.status(500).send("ERROR");
   });
 });
@@ -252,9 +259,8 @@ function getBestMarket(list, price, snapshot) {
 
     return true;
   });
-
   return markets;
-};
+}
 
 function getList(snapshot){
   var prod = snapshot.val().prod;
@@ -275,4 +281,4 @@ function getList(snapshot){
   }
 
   return [list,price];
-};
+}
