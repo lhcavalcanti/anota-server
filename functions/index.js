@@ -101,14 +101,20 @@ exports.setUserListName = functions.https.onRequest((req, res) => {
 exports.updateBestMarkets = functions.database.ref('/users/{pushId}/{list}')
   .onCreate((snapshot) => {
     [list, price] = getList(snapshot);
-    getBestMarket(list, price, snapshot);
-    return true;
+    if(list.length > 0){
+      return getBestMarket(list, price).then((result) => {
+        console.log("updateBestMarket - OK");
+        snapshot.ref.child('bestMarkets').set(result);
+        return 200;
+      }, (err) => {
+        console.log("updateBestMarket - 404");
+        return err;
+      });
+    } else {
+      console.log("updateBestMarket - ERROR");
+      return 500;
+    }
   });
-
-
-  //Teste Local
-//http://localhost:5000/anota-backend/us-central1/addList?uid=12345&link=http://nfce.sefaz.pe.gov.br/nfce-web/consultarNFCe?chNFe=26180421920821000116650050000111779051519177&nVersao=100&tpAmb=1&dhEmi=323031382D30342D32345431343A33343A31342D30333A3030&vNF=68.23&vICMS=3.17&digVal=&cIdToken=000001&cHashQRCode=BFFC6C762A27D77FF8C8B8FDB6B83C6296F6014F
-//http://localhost:5000/anota-backend/us-central1/addList?uid=12345&link=http://nfce.sefaz.pe.gov.br/nfce-web/consultarNFCe?chNFe=26180406057223027967650100000196741100418351&nVersao=100&tpAmb=1&dhEmi=323031382d30342d32395431303a32333a34322d30333a3030&vNF=663.96&vICMS=71.81&digVal=2f4e314952456f7149353159793352596972627664654e78574a413d&cIdToken=000001&cHashQRCode=3957073cfcd84f6ebb36718f179b3f65cf38f881
 
 
 
@@ -144,15 +150,16 @@ function requestList(link, uid, date) {
           doc('uCom').each(function (i, element) {
             (prod[prodName[i]])["un"] = doc(this).text();
           });
-          var temp = 0;
           doc('qCom').each(function (i, element) {
-            temp = (parseFloat((prod[prodName[i]])["qtd"]) + parseFloat(doc(this).text()));
-            (prod[prodName[i]])["qtd"] = temp.toFixed(3).toString();
+            (prod[prodName[i]])["qtd"] += parseFloat(parseFloat(doc(this).text()).toFixed(3));
           });
           doc('vUnCom').each(function (i, element) {
-            (prod[prodName[i]])["priceUnit"] = (parseFloat(doc(this).text()).toFixed(3)).toString();
+            (prod[prodName[i]])["priceUnit"] = parseFloat(parseFloat(doc(this).text()).toFixed(3));
           });
-
+          var price = 0;
+          async.forEach(Object.keys(prod), (i, element) => {
+            price += prod[i]["qtd"] * prod[i]["priceUnit"];
+          });
           var address = {
             street: doc('xLgr').text(),
             num: doc('nro').text(),
@@ -170,11 +177,12 @@ function requestList(link, uid, date) {
             name: doc('xNome').text(),
             cnpj: doc('CNPJ').text(),
             address: address,
+            price: parseFloat(price.toFixed(3)),
             prod: prod,
             date: doc('dhRecbto').text(),
             link: link
           };
-          
+
           return saveList(uid, lid, metadata).then((result) => {
             return resolve(result);
           }, (err) => {
@@ -183,11 +191,9 @@ function requestList(link, uid, date) {
         }
       } else { // Error detected
         console.log("requestList - Error of Request");
-        reject(error);
-        return error;
+        return reject(error);
       }
     });
-
   });
 }
 
@@ -198,7 +204,8 @@ function saveList(uid, lid, metadata) {
       name: metadata.name,
       prod: metadata.prod,
       address: metadata.address,
-      date: metadata.date
+      date: metadata.date,
+      price: metadata.price
     };
     var marketInfo = {
       name: metadata.name,
@@ -231,10 +238,9 @@ function saveList(uid, lid, metadata) {
         markets[metadata.cnpj] = true;
         listProd[i] = markets;
       });
-      return database.ref("/products/").update(listProd);
-    }).then(() => {
       console.log("saveList - NFe OK!");
       userListData["lid"] = lid;
+      database.ref("/products/").update(listProd);
       return resolve(userListData);
     });
   });
@@ -245,40 +251,38 @@ function objNotEmpty(obj){
   return false;
 }
 
-function getBestMarket(list, price, snapshot) {
-  var bestMarkets = {};
-  markets = database.ref('markets/').once('value').then(snap => {
-
-    var marketPrice = 0;
-    snap.forEach( market => {
-
-      marketPrice = 0;
-      var marketList = market.val().prod;
-
-      list.forEach( (listProduct) =>{
-        if(marketList[listProduct.name])
+function getBestMarket(list, price) {
+  return new Promise((resolve, reject) => {
+    return database.ref('markets/').once('value').then(snap => {
+      var bestMarkets = {};
+      var marketPrice = 0;
+      // For each market on DB
+      snap.forEach( (market) => {
+        marketPrice = 0;
+        var marketList = market.val().prod;
+        // For each product on the list
+        list.forEach( (listProduct) =>{
+          if(marketList[listProduct.name])
+          {
+            marketPrice += marketList[listProduct.name].priceUnit * listProduct.qtd;
+          }
+          else{
+            marketPrice = -Infinity;
+          }
+        });
+        marketPrice = parseFloat(marketPrice.toFixed(3));
+        if(marketPrice >= 0)
         {
-          marketPrice += marketList[listProduct.name].priceUnit * listProduct.qtd;
-        }
-        else{
-          marketPrice = -Infinity;
+          bestMarkets[market.key] = {price: marketPrice};
         }
       });
-
-      if(marketPrice >= 0)
-      {
-        bestMarkets[market.key] = {price: marketPrice, gps: -1};
+      if (objNotEmpty(bestMarkets)) {
+        return resolve(bestMarkets);
+      } else {
+        return reject(new Error("404"));
       }
     });
-
-    if(objNotEmpty(bestMarkets))
-    {
-      return snapshot.ref.child('bestMarkets').set(bestMarkets);
-    }
-
-    return true;
   });
-  return markets;
 }
 
 function getList(snapshot){
@@ -287,17 +291,13 @@ function getList(snapshot){
   var price = 0.0;
   if (prod)
   {
-    for(var product in prod)
-    {
+    price = snapshot.val().price;
+    async.forEach(Object.keys(prod), (i, element) => {
       list.push({
-        name: product,
-        qtd: parseFloat(prod[product].qtd)
-      });
-
-      itemPrice = parseFloat(prod[product].priceUnit)*parseFloat(prod[product].qtd);
-      price += itemPrice;
-    }
+        name: i,
+        qtd: prod[i]["qtd"]
+      })
+    });
   }
-
   return [list,price];
 }
