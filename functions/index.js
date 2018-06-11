@@ -99,21 +99,26 @@ exports.setUserListName = functions.https.onRequest((req, res) => {
 
 
 exports.updateBestMarkets = functions.database.ref('/users/{pushId}/{list}')
-  .onCreate((snapshot) => {
-    [list, price] = getList(snapshot);
-    if(list.length > 0){
-      return getBestMarket(list, price).then((result) => {
-        console.log("updateBestMarket - OK");
-        snapshot.ref.child('bestMarkets').set(result);
-        return 200;
-      }, (err) => {
-        console.log("updateBestMarket - 404");
-        return err;
-      });
+  .onWrite((snapshot) => {
+    if (snapshot.after.exists()){
+      [list, price] = getList(snapshot.after);
+      if (list.length > 0) {
+        return getBestMarket(list, price).then((result) => {
+          console.log("updateBestMarket - OK");
+          return snapshot.after.ref.child('bestMarkets').set(result);
+        }, (err) => {
+          console.log("updateBestMarket - 404");
+          return err;
+        });
+      } else {
+        console.log("updateBestMarket - EmptyList");
+        return new Error("Error - EL");
+      }
     } else {
-      console.log("updateBestMarket - ERROR");
-      return 500;
+      console.log("updateBestMarket - RemovedList");
+      return new Error("Error - LR");
     }
+    
   });
 
 
@@ -240,8 +245,8 @@ function saveList(uid, lid, metadata) {
       });
       console.log("saveList - NFe OK!");
       userListData["lid"] = lid;
-      database.ref("/products/").update(listProd);
-      return resolve(userListData);
+      resolve(userListData);
+      return database.ref("/products/").update(listProd);
     });
   });
 }
@@ -261,7 +266,7 @@ function getBestMarket(list, price) {
         marketPrice = 0;
         var marketList = market.val().prod;
         // For each product on the list
-        list.forEach( (listProduct) =>{
+        list.forEach( (listProduct) => {
           if(marketList[listProduct.name])
           {
             marketPrice += marketList[listProduct.name].priceUnit * listProduct.qtd;
@@ -273,7 +278,10 @@ function getBestMarket(list, price) {
         marketPrice = parseFloat(marketPrice.toFixed(3));
         if(marketPrice >= 0)
         {
-          bestMarkets[market.key] = {price: marketPrice};
+          bestMarkets[market.key] = {
+            price: marketPrice,
+            name: market.val().name
+          };
         }
       });
       if (objNotEmpty(bestMarkets)) {
@@ -289,15 +297,12 @@ function getList(snapshot){
   var prod = snapshot.val().prod;
   var list = [];
   var price = 0.0;
-  if (prod)
-  {
-    price = snapshot.val().price;
-    async.forEach(Object.keys(prod), (i, element) => {
-      list.push({
-        name: i,
-        qtd: prod[i]["qtd"]
-      })
-    });
-  }
+  price = snapshot.val().price;
+  async.forEach(Object.keys(prod), (i, element) => {
+    list.push({
+      name: i,
+      qtd: prod[i]["qtd"]
+    })
+  });
   return [list,price];
 }
