@@ -98,8 +98,8 @@ exports.setUserListName = functions.https.onRequest((req, res) => {
 });
 
 
-exports.updateBestMarkets = functions.database.ref('/users/{pushId}/{market}')
-  .onCreate((snapshot, context) => {
+exports.updateBestMarkets = functions.database.ref('/users/{pushId}/{list}')
+  .onCreate((snapshot) => {
     [list, price] = getList(snapshot);
     getBestMarket(list, price, snapshot);
     return true;
@@ -133,9 +133,9 @@ function requestList(link, uid, date) {
           var prodName = [];
           var prod = {};
           doc('xProd').each(function (i, element) {
-            prodName[i] = doc(this).text().replace(/\/|&|\*|%/g, " ");
+            prodName[i] = doc(this).text().replace(/\.|#|\[|\]|\/|&|\*|%/g, " ")
             prod[prodName[i]] = {
-              //name: doc(this).text()
+              qtd: 0
             };
           });
           doc('cProd').each(function (i, element) {
@@ -144,11 +144,13 @@ function requestList(link, uid, date) {
           doc('uCom').each(function (i, element) {
             (prod[prodName[i]])["un"] = doc(this).text();
           });
+          var temp = 0;
           doc('qCom').each(function (i, element) {
-            (prod[prodName[i]])["qtd"] = doc(this).text();
+            temp = (parseFloat((prod[prodName[i]])["qtd"]) + parseFloat(doc(this).text()));
+            (prod[prodName[i]])["qtd"] = temp.toFixed(3).toString();
           });
           doc('vUnCom').each(function (i, element) {
-            (prod[prodName[i]])["priceUnit"] = doc(this).text();
+            (prod[prodName[i]])["priceUnit"] = (parseFloat(doc(this).text()).toFixed(3)).toString();
           });
 
           var address = {
@@ -172,7 +174,7 @@ function requestList(link, uid, date) {
             date: doc('dhRecbto').text(),
             link: link
           };
-
+          
           return saveList(uid, lid, metadata).then((result) => {
             return resolve(result);
           }, (err) => {
@@ -203,9 +205,17 @@ function saveList(uid, lid, metadata) {
       address: metadata.address,
       date: metadata.date
     };
+    var marketProd = {};
+    async.forEach(Object.keys(metadata.prod), (i, element) => {
+      marketProd[i] = {        
+        code: metadata.prod[i].code,
+        priceUnit: metadata.prod[i].priceUnit,
+        un: metadata.prod[i].un
+      }
+    });   
 
     database.ref('/users/' + uid + "/" + lid).set(userListData);
-    database.ref("/markets/" + metadata.cnpj + "/prod/").update(metadata.prod);
+    database.ref("/markets/" + metadata.cnpj + "/prod/").update(marketProd);
     database.ref("/markets/" + metadata.cnpj).update(marketInfo);
     database.ref('/waitList/' + lid).remove();
 
@@ -239,18 +249,16 @@ function getBestMarket(list, price, snapshot) {
   var bestMarkets = {};
   markets = database.ref('markets/').once('value').then(snap => {
 
-    marketPrice = 0;
+    var marketPrice = 0;
     snap.forEach( market => {
 
       marketPrice = 0;
-      var haveAllProducts = true;
-      var name = market.key;
-      var prodFullList = market.val().prod;
+      var marketList = market.val().prod;
 
-      list.forEach( (targetProduct, index) =>{
-        if(prodFullList[targetProduct.name])
+      list.forEach( (listProduct) =>{
+        if(marketList[listProduct.name])
         {
-          marketPrice += prodFullList[targetProduct.name].priceUnit*targetProduct.qtd;
+          marketPrice += marketList[listProduct.name].priceUnit * listProduct.qtd;
         }
         else{
           marketPrice = -Infinity;
@@ -259,7 +267,7 @@ function getBestMarket(list, price, snapshot) {
 
       if(marketPrice >= 0)
       {
-        bestMarkets[name] = {price: marketPrice, gps: -1};
+        bestMarkets[market.key] = {price: marketPrice, gps: -1};
       }
     });
 
