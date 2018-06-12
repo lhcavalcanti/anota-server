@@ -117,7 +117,7 @@ exports.removeUserList = functions.https.onRequest((req, res) => {
   return database.ref('/users/' + uid + "/" + lid).remove().then(() => {
     console.log("removeUserList - OK");
     return res.status(200).send("OK");
-  }).catch((err) => {
+  }).catch(() => {
     console.log("removeUserList - ERROR");
     return res.status(500).send("ERROR");
   });
