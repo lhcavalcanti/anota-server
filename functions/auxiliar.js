@@ -36,15 +36,14 @@ module.exports = {
                             (prod[prodName[i]])["un"] = doc(this).text();
                         });
                         doc('qCom').each(function (i, element) {
-                            (prod[prodName[i]])["qtd"] += parseFloat(parseFloat(doc(this).text()).toFixed(3));
+                            (prod[prodName[i]])["qtd"] += parseFloat(doc(this).text());
                         });
                         doc('vUnCom').each(function (i, element) {
-                            (prod[prodName[i]])["priceUnit"] = parseFloat(parseFloat(doc(this).text()).toFixed(3));
+                            (prod[prodName[i]])["priceUnit"] = parseFloat(doc(this).text());
                         });
-                        var price = 0;
-                        async.forEach(Object.keys(prod), (i, element) => {
-                            price += prod[i]["qtd"] * prod[i]["priceUnit"];
-                        });
+                        
+                        var price = module.exports.listPrice(prod);
+
                         var address = {
                             street: doc('xLgr').text(),
                             num: doc('nro').text(),
@@ -62,7 +61,7 @@ module.exports = {
                             name: doc('xNome').text(),
                             cnpj: doc('CNPJ').text(),
                             address: address,
-                            price: parseFloat(price.toFixed(3)),
+                            price: module.exports.roundNum(price),
                             prod: prod,
                             date: doc('dhRecbto').text(),
                             link: link
@@ -81,7 +80,19 @@ module.exports = {
             });
         });
     },
-    
+    listPrice: function(prod){
+        var price = 0;
+        Object.keys(prod).forEach((i) => {
+            // console.log("%s -> %d", prod[i]["code"], prod[i]["qtd"] * prod[i]["priceUnit"]);
+            price += module.exports.roundNum(prod[i]["qtd"] * prod[i]["priceUnit"]);
+        });
+        return price;
+    },
+
+    roundNum: function (num) {
+        return parseFloat(num.toFixed(2));
+    },
+
     getBestMarket: function (snapshot, database) {
         return new Promise((resolve, reject) => {
             [list, price] = getList(snapshot);
@@ -96,16 +107,16 @@ module.exports = {
                         // For each product on the list
                         list.forEach((listProduct) => {
                             if (marketList[listProduct.name]) {
-                                marketPrice += marketList[listProduct.name].priceUnit * listProduct.qtd;
+                                marketPrice += 
+                                module.exports.roundNum(marketList[listProduct.name].priceUnit * listProduct.qtd);
                             }
                             else {
                                 marketPrice = -Infinity;
                             }
                         });
-                        marketPrice = parseFloat(marketPrice.toFixed(3));
                         if (marketPrice >= 0) {
                             bestMarkets[market.key] = {
-                                price: marketPrice,
+                                price: module.exports.roundNum(marketPrice),
                                 name: market.val().name
                             };
                         }
