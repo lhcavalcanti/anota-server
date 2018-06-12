@@ -127,12 +127,17 @@ exports.removeUserListProduct = functions.https.onRequest((req, res) => {
   const uid = req.query.uid;
   const lid = req.query.lid;
   const product = req.query.prod;
-  return database.ref('/users/' + uid + "/" + lid + "/prod").once("value").then((snapshot) => {
-    if (product in snapshot.val()) {
-      if(Object.keys(snapshot.val()).length <= 1){
+  return database.ref('/users/' + uid + "/" + lid).once("value").then((snapshot) => {
+    if (product in snapshot.val().prod) {
+      if(Object.keys(snapshot.val().prod).length <= 1){
         database.ref('/users/' + uid + "/" + lid).remove();
       } else {
-       database.ref('/users/' + uid + "/" + lid + "/prod/" + product).remove();
+        database.ref('/users/' + uid + "/" + lid + "/prod/" + product).remove();
+        var prodObj = snapshot.val().prod[product];
+        var value = {
+          price: aux.roundNum(snapshot.val().price - (prodObj.priceUnit * prodObj.qtd))
+        }
+        database.ref('/users/' + uid + "/" + lid).update(value);
       }
       console.log("removeUserListProduct - OK");
       return res.status(200).send("OK");
