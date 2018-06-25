@@ -13,6 +13,15 @@ admin.initializeApp();
 const database = admin.database();
 const aux = require("./auxiliar.js");
 
+exports.similaritySearch = functions.https.onRequest((req, res) => {
+  const qrry = req.query.qrry;
+
+  return aux.search(qrry, database).then((result) => {
+    return res.status(200).send(result);
+  }, (err) => {
+    return res.status(500).send(err);
+  });
+});
 
 exports.addList = functions.https.onRequest((req, res) => {
   // Grab the text parameter.
