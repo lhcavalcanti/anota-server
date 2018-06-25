@@ -1,8 +1,25 @@
 const request = require('request');
 const cheerio = require('cheerio');
 const async = require('async');
+const similarity = require('string-similarity')
 
 module.exports = {
+    search : function(qrry, database){
+      function compare(a,b){
+        if (a.rating < b.rating)
+          return -1;
+        if(a.rating > b.rating)
+          return 1;
+        return 0;
+      }
+      return database.ref('/products').once("value").then((snapshot) => {
+          var sch = similarity.findBestMatch(qrry, Object.keys(snapshot.val()))
+          // console.log(Object.keys(snapshot.val()))
+          // sch.sort(function(a,b){return (a.rating > b.rating) ? 1 : ((b.rating > a.rating) ? -1 : 0);});
+          console.log(sch.ratings.sort(compare).slice(-10))
+          return sch.ratings.sort(compare).slice(-10)
+        });
+    },
     requestList: function(link, uid, date, database) {
         return new Promise((resolve, reject) => {
             request(link, (error, response, html) => {
@@ -41,7 +58,7 @@ module.exports = {
                         doc('vUnCom').each(function (i, element) {
                             (prod[prodName[i]])["priceUnit"] = parseFloat(doc(this).text());
                         });
-                        
+
                         var price = module.exports.listPrice(prod);
 
                         var address = {
@@ -56,7 +73,7 @@ module.exports = {
                             country: doc('xPais').text(),
                             // phone: doc('fone').text(),
                         };
-                        
+
                         metadata = {
                             name: doc('xNome').text(),
                             cnpj: doc('CNPJ').text(),
@@ -66,7 +83,7 @@ module.exports = {
                             date: doc('dhRecbto').text(),
                             link: link
                         };
-                        
+
                         return saveList(uid, lid, metadata, database).then((result) => {
                             return resolve(result);
                         }, (err) => {
@@ -107,7 +124,7 @@ module.exports = {
                         // For each product on the list
                         list.forEach((listProduct) => {
                             if (marketList[listProduct.name]) {
-                                marketPrice += 
+                                marketPrice +=
                                 module.exports.roundNum(marketList[listProduct.name].priceUnit * listProduct.qtd);
                             }
                             else {
@@ -128,13 +145,13 @@ module.exports = {
                     }
                 }).catch(() => {
                     return reject(new Error("ERROR"));
-                }); 
+                });
             } else {
                 return reject(new Error("EmptyList"));
             }
         });
     },
-    
+
 };
 
 function saveList (uid, lid, metadata, database) {
@@ -160,12 +177,12 @@ function saveList (uid, lid, metadata, database) {
                 un: metadata.prod[i].un
             }
         });
-        
+
         database.ref('/users/' + uid + "/" + lid).set(userListData);
         database.ref("/markets/" + metadata.cnpj + "/prod/").update(marketProd);
         database.ref("/markets/" + metadata.cnpj).update(marketInfo);
         database.ref('/waitList/' + lid).remove();
-        
+
         return database.ref('/products/').once('value').then((snapshot) => {
             var listProd = {};
             async.forEach(Object.keys(metadata.prod), (i, element) => {
