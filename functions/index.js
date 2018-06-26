@@ -31,7 +31,7 @@ exports.retryList = functions.https.onRequest((req, res) => {
   return wl.once('value').then((snapshot) => {
     snapshot.forEach(elem => {
       // console.log(elem.key + " uid: " + elem.val().uid + " link " + elem.val().link + " and time: " + elem.val().time);
-      aux.requestList(elem.val().link, elem.val().uid, elem.val().time);
+      aux.requestList(elem.val().link, elem.val().uid, elem.val().time, database);  
     });
     return true;
   }).then(() => {
