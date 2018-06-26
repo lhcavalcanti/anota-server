@@ -14,11 +14,12 @@ module.exports = {
       }
       return database.ref('/products').once("value").then((snapshot) => {
           var sch = similarity.findBestMatch(qrry, Object.keys(snapshot.val()))
-          // console.log(Object.keys(snapshot.val()))
-          // sch.sort(function(a,b){return (a.rating > b.rating) ? 1 : ((b.rating > a.rating) ? -1 : 0);});
           console.log(sch.ratings.sort(compare).slice(-10))
           return sch.ratings.sort(compare).slice(-10)
         });
+    },
+    searchMatch : function(qrry, prod){
+        return similarity.findBestMatch(qrry, Object.keys(prod))
     },
     requestList: function(link, uid, date, database) {
         return new Promise((resolve, reject) => {
@@ -120,15 +121,17 @@ module.exports = {
                     // For each market on DB
                     snap.forEach((market) => {
                         marketPrice = 0;
+                        marketPrice2 = 0;
                         var marketList = market.val().prod;
                         // For each product on the list
                         list.forEach((listProduct) => {
-                            if (marketList[listProduct.name]) {
+                            var bestProd = module.exports.searchMatch(listProduct.name, marketList);
+                            if (bestProd.bestMatch.rating > 0.4){
                                 marketPrice +=
-                                module.exports.roundNum(marketList[listProduct.name].priceUnit * listProduct.qtd);
+                                module.exports.roundNum(marketList[bestProd.bestMatch.target].priceUnit * listProduct.qtd);
                             }
-                            else {
-                                marketPrice = -Infinity;
+                            else{
+                              marketPrice = -Infinity;
                             }
                         });
                         if (marketPrice >= 0) {
