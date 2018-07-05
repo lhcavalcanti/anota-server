@@ -14,8 +14,8 @@ module.exports = {
       }
       return database.ref('/products').once("value").then((snapshot) => {
           var sch = similarity.findBestMatch(qrry, Object.keys(snapshot.val()))
-          console.log(sch.ratings.sort(compare).slice(-10))
-          return sch.ratings.sort(compare).slice(-10)
+          console.log(sch.ratings.sort(compare).slice(-20))
+          return sch.ratings.sort(compare).slice(-20)
         });
     },
     searchMatch : function(qrry, prod){
@@ -121,12 +121,11 @@ module.exports = {
                     // For each market on DB
                     snap.forEach((market) => {
                         marketPrice = 0;
-                        marketPrice2 = 0;
                         var marketList = market.val().prod;
                         // For each product on the list
                         list.forEach((listProduct) => {
                             var bestProd = module.exports.searchMatch(listProduct.name, marketList);
-                            if (bestProd.bestMatch.rating > 0.4){
+                            if (bestProd.bestMatch.rating > 0.27){
                                 marketPrice +=
                                 module.exports.roundNum(marketList[bestProd.bestMatch.target].priceUnit * listProduct.qtd);
                             }
