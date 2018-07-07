@@ -114,6 +114,7 @@ module.exports = {
     getBestMarket: function (snapshot, database, marketRef) {
         return new Promise((resolve, reject) => {
             [list, price] = getList(snapshot);
+            
             if (list.length > 0) {
                 return marketRef.once('value').then(snap => {
                     var bestMarkets = {};
@@ -208,10 +209,11 @@ function saveList (uid, lid, metadata, database) {
 }
 
 function getList(snapshot) {
-    var prod = snapshot.val().prod;
+    
+    var prod = snapshot.prod;
     var list = [];
     var price = 0.0;
-    price = snapshot.val().price;
+    price = snapshot.price;
     async.forEach(Object.keys(prod), (i, element) => {
         list.push({
             name: i,

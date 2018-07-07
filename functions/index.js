@@ -57,21 +57,28 @@ exports.updateBestMarkets = functions.database.ref('/users/{pushId}/{list}')
 .onWrite((snapshot) => {
   if (snapshot.after.exists()){
     
-    var userRef = database.ref('/users/');
-    var marketRef = database.ref('markets/');
+    return database.ref('/users/').once('value').then( (userRef) =>{
+      var marketRef = database.ref('markets/');
+      userRef = userRef.val();
+      
+      async.forEach(Object.keys( userRef ),(user)  => {
+          
+          async.forEach(Object.keys( userRef[user] ), (list) =>{
 
-    async.forEach(Object.keys( userRef ),(user)  => {
-        async.forEach(Object.keys(database.ref('users/'+ user + '/')), (list) =>{
-          return aux.getBestMarket(snapshot.after, database, marketRef).then((result) => {
-            console.log("updateBestMarket - OK");
-            return snapshot.after.ref.child('bestMarkets').set(result);
-          }, (err) => {
-            console.log("updateBestMarket - " + err.message);
-            return err;
+            return aux.getBestMarket(userRef[user][list], database, marketRef).then((result) => {
+              console.log("updateBestMarket - OK");
+              return database.ref('/users/' + user + "/" + list + "/" +"bestMarkets").update(result)
+            }, (err) => {
+              console.log("updateBestMarket - " + err.message);
+              return err;
+            });
+          
           });
-        
-        });
-    });    
+      });
+
+      return true;
+    });
+    
 } else {
   console.log("updateBestMarket - RemovedList");
   return new Error("Error - LR");
