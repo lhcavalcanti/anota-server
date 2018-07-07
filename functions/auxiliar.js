@@ -136,7 +136,9 @@ module.exports = {
                         if (marketPrice >= 0) {
                             bestMarkets[market.key] = {
                                 price: module.exports.roundNum(marketPrice),
-                                name: market.val().name
+                                name: market.val().name,
+                                address: market.val().address.street + ", " + market.val().address.num + ", " +
+                                 market.val().address.neighborhood + ", " + market.val().address.uf
                             };
                         }
                     });
