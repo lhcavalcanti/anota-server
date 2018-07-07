@@ -12,6 +12,7 @@ admin.initializeApp();
 
 const database = admin.database();
 const aux = require("./auxiliar.js");
+const async = require('async');
 
 exports.similaritySearch = functions.https.onRequest((req, res) => {
   const qrry = req.query.qrry;
@@ -50,21 +51,35 @@ exports.retryList = functions.https.onRequest((req, res) => {
   });
 });
 
+
+
 exports.updateBestMarkets = functions.database.ref('/users/{pushId}/{list}')
 .onWrite((snapshot) => {
   if (snapshot.after.exists()){
-    return aux.getBestMarket(snapshot.after, database).then((result) => {
-      console.log("updateBestMarket - OK");
-      return snapshot.after.ref.child('bestMarkets').set(result);
-    }, (err) => {
-      console.log("updateBestMarket - " + err.message);
-      return err;
-    });
-  } else {
-    console.log("updateBestMarket - RemovedList");
-    return new Error("Error - LR");
-  }
+    
+    var userRef = database.ref('/users/');
+    var marketRef = database.ref('markets/');
+
+    async.forEach(Object.keys( userRef ),(user)  => {
+        async.forEach(Object.keys(database.ref('users/'+ user + '/')), (list) =>{
+          return aux.getBestMarket(snapshot.after, database, marketRef).then((result) => {
+            console.log("updateBestMarket - OK");
+            return snapshot.after.ref.child('bestMarkets').set(result);
+          }, (err) => {
+            console.log("updateBestMarket - " + err.message);
+            return err;
+          });
+        
+        });
+    });    
+} else {
+  console.log("updateBestMarket - RemovedList");
+  return new Error("Error - LR");
+}
+
 });
+
+
 
 exports.getUser = functions.https.onRequest((req, res) => {
   const uid = req.query.uid;
