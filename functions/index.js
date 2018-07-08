@@ -60,8 +60,9 @@ exports.updateBestMarkets = functions.database.ref('/users/{pushId}/{list}')
       var marketRef = database.ref('markets/');
       userVal = userVal.val();
       Object.keys(userVal).map( (ukey, index) => {
-        Object.keys(userVal[ukey]).map( (lkey, index) => {
-          console.log("LIST: " + lkey);
+        console.log("USER: " + ukey);
+        return Object.keys(userVal[ukey]).map( (lkey, index) => {
+          console.log("   LIST: " + lkey);
           return aux.getBestMarket(userVal[ukey][lkey], database, marketRef).then((result) => {
               console.log("updateBestMarket - OK");
               return database.ref('/users/' + ukey + "/" + lkey + "/" +"bestMarkets").update(result)
