@@ -56,25 +56,35 @@ exports.retryList = functions.https.onRequest((req, res) => {
 exports.updateBestMarkets = functions.database.ref('/users/{pushId}/{list}')
 .onWrite((snapshot) => {
   if (snapshot.after.exists()){
-    
-    return database.ref('/users/').once('value').then( (userRef) =>{
+    return database.ref('/users/').once('value').then((userVal) =>{
       var marketRef = database.ref('markets/');
-      userRef = userRef.val();
-      
-      async.forEach(Object.keys( userRef ),(user)  => {
-          
-          async.forEach(Object.keys( userRef[user] ), (list) =>{
-
-            return aux.getBestMarket(userRef[user][list], database, marketRef).then((result) => {
+      userVal = userVal.val();
+      Object.keys(userVal).map( (ukey, index) => {
+        Object.keys(userVal[ukey]).map( (lkey, index) => {
+          console.log("LIST: " + lkey);
+          return aux.getBestMarket(userVal[ukey][lkey], database, marketRef).then((result) => {
               console.log("updateBestMarket - OK");
-              return database.ref('/users/' + user + "/" + list + "/" +"bestMarkets").update(result)
+              return database.ref('/users/' + ukey + "/" + lkey + "/" +"bestMarkets").update(result)
             }, (err) => {
               console.log("updateBestMarket - " + err.message);
               return err;
             });
+        });
+      }); 
+      // userVal.forEach((user)  => {
+      //   console.log("user: " + user);
+      //   userVal[user].forEach( (list) =>{
+      //     console.log("LIST: " + list);
+      //       return aux.getBestMarket(list , database, marketRef).then((result) => {
+      //         console.log("updateBestMarket - OK");
+      //         return database.ref('/users/' + user + "/" + list + "/" +"bestMarkets").update(result)
+      //       }, (err) => {
+      //         console.log("updateBestMarket - " + err.message);
+      //         return err;
+      //       });
           
-          });
-      });
+      //     });
+      // });
 
       return true;
     });
@@ -83,7 +93,6 @@ exports.updateBestMarkets = functions.database.ref('/users/{pushId}/{list}')
   console.log("updateBestMarket - RemovedList");
   return new Error("Error - LR");
 }
-
 });
 
 

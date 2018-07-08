@@ -146,7 +146,7 @@ module.exports = {
                     if (objNotEmpty(bestMarkets)) {
                         return resolve(bestMarkets);
                     } else {
-                        return reject(new Error("NoBest"));
+                        return reject(new Error("No Best"));
                     }
                 }).catch(() => {
                     return reject(new Error("ERROR"));
