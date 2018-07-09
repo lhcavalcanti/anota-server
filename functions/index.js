@@ -57,13 +57,12 @@ exports.updateBestMarkets = functions.database.ref('/users/{pushId}/{list}')
 .onWrite((snapshot) => {
   if (snapshot.after.exists()){
     return database.ref('/users/').once('value').then((userVal) =>{
-      var marketRef = database.ref('markets/');
       userVal = userVal.val();
       Object.keys(userVal).map( (ukey, index) => {
         console.log("USER: " + ukey);
         return Object.keys(userVal[ukey]).map( (lkey, index) => {
           console.log("   LIST: " + lkey);
-          return aux.getBestMarket(userVal[ukey][lkey], database, marketRef).then((result) => {
+          return aux.getBestMarket(userVal[ukey][lkey], database).then((result) => {
               console.log("updateBestMarket - OK");
               return database.ref('/users/' + ukey + "/" + lkey + "/" +"bestMarkets").update(result)
             }, (err) => {
@@ -71,22 +70,7 @@ exports.updateBestMarkets = functions.database.ref('/users/{pushId}/{list}')
               return err;
             });
         });
-      }); 
-      // userVal.forEach((user)  => {
-      //   console.log("user: " + user);
-      //   userVal[user].forEach( (list) =>{
-      //     console.log("LIST: " + list);
-      //       return aux.getBestMarket(list , database, marketRef).then((result) => {
-      //         console.log("updateBestMarket - OK");
-      //         return database.ref('/users/' + user + "/" + list + "/" +"bestMarkets").update(result)
-      //       }, (err) => {
-      //         console.log("updateBestMarket - " + err.message);
-      //         return err;
-      //       });
-          
-      //     });
-      // });
-
+      });
       return true;
     });
     

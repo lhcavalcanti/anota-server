@@ -111,12 +111,12 @@ module.exports = {
         return parseFloat(num.toFixed(2));
     },
 
-    getBestMarket: function (snapshot, database, marketRef) {
+    getBestMarket: function (snapshot, database) {
         return new Promise((resolve, reject) => {
             [list, price] = getList(snapshot);
             
             if (list.length > 0) {
-                return marketRef.once('value').then(snap => {
+                return database.ref('/markets/').once('value').then(snap => {
                     var bestMarkets = {};
                     var marketPrice = 0;
                     // For each market on DB
